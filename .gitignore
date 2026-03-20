@@ -146,6 +146,11 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# Task specs and internal docs
+task_specification.md
+sample_path_bound_derivation.tex
+approximation_final.tex
+
 # pytype static type analyzer
 .pytype/
 
