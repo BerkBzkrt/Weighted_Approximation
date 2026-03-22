@@ -4,7 +4,7 @@ Numerical experiments for weighted-norm and sample-path dependent bounds on subo
 
 ## Overview
 
-We study an inventory MDP under two models: a true model **M** and an approximate model **M_hat** that differ in demand distribution and holding cost. The project computes and compares three types of bounds on the suboptimality gap $V^{pi_hat\*} - V\*$:
+We study an inventory MDP under two models: a true model **M** and an approximate model **M_hat** that differ in demand distribution and holding cost. The project computes and compares three types of bounds on the suboptimality gap $V^{\hat{\pi}^\star\} - V^\star$:
 
 1. **Sup-norm bound** -- uniform constant bound over all states
 2. **Weighted-norm bound** -- state-dependent bound using a Lyapunov weight function
