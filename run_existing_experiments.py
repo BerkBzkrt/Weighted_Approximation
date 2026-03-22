@@ -1,7 +1,6 @@
 """Generate all 10 paper figures for approximation_final.tex."""
 
 import os
-import shutil
 import numpy as np
 from models import InventoryMDP
 from solvers import value_iteration, policy_evaluation
@@ -49,6 +48,8 @@ def generate_weighted_vs_sup(M, M_hat, V_hat_star, pi_star, pi_hat_star,
                               V_pi_hat_star):
     """Generate weight_zoomed_out/in.pdf and sup_zoomed_out/in.pdf."""
     print("\n=== Set 1: Weighted vs Sup-norm ===")
+    os.makedirs("Figures/fig1", exist_ok=True)
+    os.makedirs("Figures/fig2", exist_ok=True)
     states = M.states
 
     for ell, name in [(1.5e-2, "weight"), (0, "sup")]:
@@ -69,12 +70,13 @@ def generate_weighted_vs_sup(M, M_hat, V_hat_star, pi_star, pi_hat_star,
 
         label = r'$\ell = 0$' if ell == 0 else f'$\\ell = {ell:.1e}$'
 
+        # fig1 = zoomed-out pair, fig2 = zoomed-in pair
         plot_single_bound_zoomed_out(
             states, V_pi_hat_star, bound_curve, label,
-            filename=f"Figures/{name}_zoomed_out.pdf")
+            filename=f"Figures/fig1/{name}_zoomed_out.pdf")
         plot_single_bound_zoomed_in(
             states, V_pi_hat_star, bound_curve, label,
-            filename=f"Figures/{name}_zoomed_in.pdf")
+            filename=f"Figures/fig2/{name}_zoomed_in.pdf")
 
     print("  Saved: weight_zoomed_out/in.pdf, sup_zoomed_out/in.pdf")
 
@@ -87,6 +89,7 @@ def generate_multi_weight(M, M_hat, V_hat_star, pi_star, pi_hat_star,
                            V_pi_hat_star):
     """Generate multi_out_500_new.pdf and multi_in_500_new.pdf."""
     print("\n=== Set 2: Multiple Weight Functions (policy stability) ===")
+    os.makedirs("Figures/fig3", exist_ok=True)
     states = M.states
     l_arr = np.linspace(0, 2.5e-2, 6)
 
@@ -114,10 +117,10 @@ def generate_multi_weight(M, M_hat, V_hat_star, pi_star, pi_hat_star,
             labels.append(f'$\\ell = {ell:.2e}$')
 
     plot_zoomed_out(states, V_pi_hat_star, curves, labels,
-                    filename="Figures/multi_out_500_new.pdf")
+                    filename="Figures/fig3/multi_out_500_new.pdf")
     plot_zoomed_in(states, V_pi_hat_star, curves, labels,
-                   filename="Figures/multi_in_500_new.pdf")
-    print("  Saved: multi_out_500_new.pdf, multi_in_500_new.pdf")
+                   filename="Figures/fig3/multi_in_500_new.pdf")
+    print("  Saved: fig3/multi_out_500_new.pdf, fig3/multi_in_500_new.pdf")
 
 
 # ---------------------------------------------------------------------------
@@ -128,6 +131,7 @@ def generate_alpha_beta(M, M_hat, V_hat_star, pi_star, pi_hat_star,
                          V_pi_hat_star):
     """Generate alpha_beta_bound_out.pdf and alpha_beta_bound_in.pdf."""
     print("\n=== Set 3: Alpha-Beta Bounds ===")
+    os.makedirs("Figures/fig4", exist_ok=True)
     states = M.states
     ell = 1.5e-2
     weight = weight_function(M_hat, ell)
@@ -156,10 +160,10 @@ def generate_alpha_beta(M, M_hat, V_hat_star, pi_star, pi_hat_star,
         print(f"  alpha={alpha}, beta={beta}: bound={bound:.4f}")
 
     plot_alpha_beta_zoomed_out(states, V_pi_hat_star, curves, labels,
-                               filename="Figures/alpha_beta_bound_out.pdf")
+                               filename="Figures/fig4/alpha_beta_bound_out.pdf")
     plot_alpha_beta_zoomed_in(states, V_pi_hat_star, curves, labels,
-                              filename="Figures/alpha_beta_bound_in.pdf")
-    print("  Saved: alpha_beta_bound_out.pdf, alpha_beta_bound_in.pdf")
+                              filename="Figures/fig4/alpha_beta_bound_in.pdf")
+    print("  Saved: fig4/alpha_beta_bound_out.pdf, fig4/alpha_beta_bound_in.pdf")
 
 
 # ---------------------------------------------------------------------------
@@ -170,6 +174,7 @@ def generate_model_stability(M, M_hat, V_hat_star, pi_hat_star,
                               V_pi_hat_star):
     """Generate multi_out_500_act_new.pdf and multi_in_500_act_new.pdf."""
     print("\n=== Set 4: Model Stability (kappa_all) ===")
+    os.makedirs("Figures/fig5", exist_ok=True)
     states = M.states
     l_arr = np.linspace(0, 2.5e-4, 6)
 
@@ -198,10 +203,10 @@ def generate_model_stability(M, M_hat, V_hat_star, pi_hat_star,
             labels.append(f'$\\ell = {ell:.2e}$')
 
     plot_zoomed_out(states, V_pi_hat_star, curves, labels,
-                    filename="Figures/multi_out_500_act_new.pdf")
+                    filename="Figures/fig5/multi_out_500_act_new.pdf")
     plot_zoomed_in(states, V_pi_hat_star, curves, labels,
-                   filename="Figures/multi_in_500_act_new.pdf")
-    print("  Saved: multi_out_500_act_new.pdf, multi_in_500_act_new.pdf")
+                   filename="Figures/fig5/multi_in_500_act_new.pdf")
+    print("  Saved: fig5/multi_out_500_act_new.pdf, fig5/multi_in_500_act_new.pdf")
 
 
 # ---------------------------------------------------------------------------
@@ -220,21 +225,7 @@ def main():
     generate_model_stability(M, M_hat, V_hat_star, pi_hat_star,
                               V_pi_hat_star)
 
-    # Copy into fig1–fig5 subfolders for easy comparison with the paper
-    fig_map = {
-        "fig1": ["weight_zoomed_out.pdf", "sup_zoomed_out.pdf"],
-        "fig2": ["weight_zoomed_in.pdf", "sup_zoomed_in.pdf"],
-        "fig3": ["multi_out_500_new.pdf", "multi_in_500_new.pdf"],
-        "fig4": ["alpha_beta_bound_out.pdf", "alpha_beta_bound_in.pdf"],
-        "fig5": ["multi_out_500_act_new.pdf", "multi_in_500_act_new.pdf"],
-    }
-    for folder, files in fig_map.items():
-        dest = os.path.join("Figures", folder)
-        os.makedirs(dest, exist_ok=True)
-        for f in files:
-            shutil.copy2(os.path.join("Figures", f), dest)
-
-    print("\nDone — all 10 figures saved to Figures/ and Figures/fig1–fig5/")
+    print("\nDone — all 10 figures saved to Figures/fig1–fig5/")
 
 
 if __name__ == "__main__":

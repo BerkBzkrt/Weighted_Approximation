@@ -146,16 +146,11 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Task specs and internal docs
-task_specification.md
-sample_path_bound_derivation.tex
-approximation_final.tex
-finite_vs_infinite_horizon.tex
-gamma_derivation.tex
+# Internal docs and derivations (kept locally in docs/)
+docs/
 
-# Bug comparison script and figures
-compare_bug.py
-figures/comparison/bug_*.pdf
+# Bug comparison scripts and figures (kept locally in scripts/)
+scripts/
 
 # Original notebook (superseded by Sample_Path_Bounds.ipynb)
 notebooks/Weighted_Approx.ipynb
