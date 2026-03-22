@@ -150,6 +150,15 @@ dmypy.json
 task_specification.md
 sample_path_bound_derivation.tex
 approximation_final.tex
+finite_vs_infinite_horizon.tex
+gamma_derivation.tex
+
+# Bug comparison script and figures
+compare_bug.py
+figures/comparison/bug_*.pdf
+
+# Original notebook (superseded by Sample_Path_Bounds.ipynb)
+notebooks/Weighted_Approx.ipynb
 
 # pytype static type analyzer
 .pytype/
