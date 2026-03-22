@@ -35,8 +35,8 @@ We study an inventory MDP under two models: a true model **M** and an approximat
 
 `notebooks/Sample_Path_Bounds.ipynb` implements the sample-path dependent AIS bound (Theorem 2, MDP Corollary). It computes a state-dependent function alpha(s) via fixed-point iteration that decomposes the approximation error into three components:
 
-- **Cost mismatch** epsilon(s) = |h_M(s) - h_Mhat(s)|
-- **Transition mismatch** Delta(s,a) on V_hat\* between the two models' dynamics
+- **Cost mismatch** $\epsilon(s) = |h_M(s) - h_{\hat{M}}(s)|$
+- **Transition mismatch** Delta(s,a) on $\hat{V}^\star$ between the two models' dynamics
 - **Propagated future error** through the true model's transitions
 
-The bound 2\*alpha(s) >= V^{pi_hat\*}(s) - V\*(s) is compared against the sup-norm and weighted-norm bounds, showing significant tightness improvements in the operating region (sample-path / weighted-norm ratio ~ 0.83, sample-path / sup-norm ratio ~ 0.06).
+The bound $2\alpha(s) >= V^{\hat{\pi}\star}(s) - V^\star(s)$ is compared against the sup-norm and weighted-norm bounds, showing significant tightness improvements in the operating region (sample-path / weighted-norm ratio ~ 0.83, sample-path / sup-norm ratio ~ 0.06).
