@@ -19,8 +19,7 @@ We study an inventory MDP under two models: a true model **M** and an approximat
 ├── bounds.py                  # Kappa computation, weighted-norm bounds, sample-path fixed-point bound
 ├── plots.py                   # Plotting utilities for zoomed-in/zoomed-out figures
 ├── tests.py                   # Sanity checks for models, solvers, and bounds
-├── run_existing_experiments.py  # Reproduces figures from the model approximation paper
-├── run_new_experiments.py       # Generates sample-path bound comparison figures
+├── computation_steps.pdf       # Rendered derivation of sample-path bounds
 ├── notebooks/
 │   ├── Weighted_Approx.ipynb        # Original weighted-norm experiments
 │   └── Sample_Path_Bounds.ipynb     # Sample-path bound derivation and comparison

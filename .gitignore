@@ -155,6 +155,10 @@ scripts/
 # Original notebook (superseded by Sample_Path_Bounds.ipynb)
 notebooks/Weighted_Approx.ipynb
 
+# Experiment runner scripts (kept locally)
+run_existing_experiments.py
+run_new_experiments.py
+
 # pytype static type analyzer
 .pytype/
 
