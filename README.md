@@ -27,6 +27,10 @@ We study an inventory MDP under two models: a true model **M** and an approximat
     └── comparison/            # Sample-path vs existing bound comparison plots
 ```
 
+## Computation Steps
+
+`computation_steps.pdf` contains the full set of steps for computing the sample dependent bound.
+
 ## Sample-Path Bounds Notebook
 
 `notebooks/Sample_Path_Bounds.ipynb` implements the sample-path dependent AIS bound (Theorem 2, MDP Corollary). It computes a state-dependent function alpha(s) via fixed-point iteration that decomposes the approximation error into three components:
