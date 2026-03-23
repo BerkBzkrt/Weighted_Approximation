@@ -21,13 +21,10 @@ We study an inventory MDP under two models: a true model **M** and an approximat
 ├── tests.py                   # Sanity checks for models, solvers, and bounds
 ├── computation_steps.pdf       # Rendered derivation of sample-path bounds
 ├── notebooks/
-│   ├── Weighted_Approx.ipynb        # Original weighted-norm experiments
 │   └── Sample_Path_Bounds.ipynb     # Sample-path bound derivation and comparison
-├── figures/
-│   ├── fig1-fig5/             # Figures from the model approximation paper
-│   └── comparison/            # Sample-path vs existing bound comparison plots
-├── docs/                      # LaTeX derivations and notes
-└── scripts/                   # Auxiliary scripts (bug comparison, etc.)
+└── figures/
+    ├── fig1-fig5/             # Figures from the model approximation paper
+    └── comparison/            # Sample-path vs existing bound comparison plots
 ```
 
 ## Sample-Path Bounds Notebook
