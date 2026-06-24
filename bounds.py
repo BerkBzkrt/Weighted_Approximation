@@ -174,3 +174,87 @@ def sample_path_bound(M, M_hat, V_hat_star, pi_star, pi_hat_star,
             break
 
     return alpha, alpha_sup, history
+
+
+def sample_path_bound_restricted(M, M_hat, V_hat_star, pi_hat_star,
+                                  Sigma=None, tol=1e-10, max_iter=1000):
+    """Sample-path bound with restricted action set (base-stock structure).
+
+    Exploits the fact that the optimal policy is base-stock with level
+    sigma* in Sigma, so the action pi*(s) = max(0, sigma* - s) must lie
+    in {max(0, sigma - s) : sigma in Sigma}.  This restricts the
+    maximisation to at most |Sigma|+1 candidates per state, without
+    requiring knowledge of pi_star.
+
+    Returns (alpha_restricted, history).
+    The actual suboptimality bound is 2*alpha_restricted(s).
+    """
+    s_max = M.s_max
+    gamma = M.gamma
+    W_M = M.W
+    W_Mh = M_hat.W
+    n_demand = len(W_M)
+    n = M.n
+
+    if Sigma is None:
+        Sigma = list(range(0, n + 1))
+    Sigma_arr = np.array(Sigma, dtype=int)
+
+    num_states = M.num_states
+    H_len = 3 * s_max + 1
+
+    # --- 1a. Cost mismatch epsilon(s) = |h_M(s) - h_Mhat(s)| ---
+    states = M.states
+    h_M = M.h_vec(states)
+    h_Mh = M_hat.h_vec(states)
+    epsilon = np.abs(h_M - h_Mh)
+
+    # --- 1b. Transition mismatch H_delta[z] ---
+    H_M = np.zeros(H_len)
+    H_Mh = np.zeros(H_len)
+    for z in range(-s_max, 2 * s_max + 1):
+        for w in range(n_demand):
+            ns = min(max(z - w, -s_max), s_max)
+            H_M[z + s_max] += W_M[w] * V_hat_star[ns + s_max]
+            H_Mh[z + s_max] += W_Mh[w] * V_hat_star[ns + s_max]
+    H_delta = np.abs(H_M - H_Mh)
+
+    # --- Fixed-point iteration for alpha_restricted ---
+    alpha = np.zeros(num_states)
+    history = []
+
+    for iteration in range(max_iter):
+        # Build H_alpha[z] = sum_w W_M[w] * alpha(clip(z-w))
+        H_alpha = np.zeros(H_len)
+        for z in range(-s_max, 2 * s_max + 1):
+            for w in range(n_demand):
+                ns = min(max(z - w, -s_max), s_max)
+                H_alpha[z + s_max] += W_M[w] * alpha[ns + s_max]
+
+        combo = gamma * H_alpha + H_delta
+
+        alpha_new = np.zeros(num_states)
+        for i, s in enumerate(states):
+            s_int = int(s)
+
+            if s_int >= n:
+                # All base-stock candidates give a=0, z=s
+                z_idx = s_int + s_max
+                alpha_new[i] = epsilon[i] + combo[z_idx]
+            elif s_int >= 0:
+                # Candidate z values: {s, s+1, ..., n}
+                z_lo = s_int + s_max
+                z_hi = n + s_max
+                alpha_new[i] = epsilon[i] + np.max(combo[z_lo:z_hi + 1])
+            else:
+                # s < 0: candidate z values are Sigma
+                alpha_new[i] = epsilon[i] + np.max(combo[Sigma_arr + s_max])
+
+        diff = np.max(np.abs(alpha_new - alpha))
+        history.append(diff)
+        alpha = alpha_new
+
+        if diff < tol:
+            break
+
+    return alpha, history

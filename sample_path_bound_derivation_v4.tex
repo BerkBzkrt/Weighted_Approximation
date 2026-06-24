@@ -1,0 +1,814 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{algorithm,algpseudocode}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\newcommand{\Smax}{S_{\max}}
+\newcommand{\clip}{\operatorname{clip}}
+\newcommand{\pistar}{\pi^\star}
+\newcommand{\pihatstar}{\hat\pi^\star}
+\newcommand{\Vstar}{V^\star}
+\newcommand{\Vhatstar}{\hat V^\star}
+\newcommand{\Vpihat}{V^{\pihatstar}}
+\newcommand{\alphares}{\alpha_{\mathrm{res}}}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{remark}{Remark}
+
+\title{Sample-Path Dependent AIS Bound:\\ Computation Steps}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+%% ====================================================================
+\section{Problem Setup}
+%% ====================================================================
+
+We have two discounted-cost MDPs sharing the same state space
+$\mathcal{S} = \{-\Smax, \ldots, \Smax\}$ and action space
+$\mathcal{A} = \{0, \ldots, \Smax\}$:
+%
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Parameter & True model $M$ & Approximate model $\hat M$ \\
+\midrule
+Discount factor $\gamma$ & $0.75$ & $0.75$ \\
+Demand $D \sim \mathrm{Bin}(n,q)$ & $n=10,\; q=0.4$ & $n=10,\; q=0.5$ \\
+Holding cost $c_h$ & $4$ & $3.8$ \\
+Shortage cost $c_s$ & $2$ & $2$ \\
+Ordering cost $p$ & $5$ & $5$ \\
+$\Smax$ & $500$ & $500$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The per-step cost in each model is
+\[
+  c(s,a) = p \cdot a + h(s),
+  \qquad
+  h(s) = \begin{cases} c_h   s & s \ge 0, \\ -c_s   s & s < 0. \end{cases}
+\]
+The transition kernel is deterministic given the demand realisation~$D$:
+\[
+  s' = \clip(s + a - D,\; -\Smax,\; \Smax).
+\]
+
+We denote by $\pistar$ and $\pihatstar$ the optimal policies of $M$ and $\hat M$
+(both are base-stock policies with levels $\sigma^\star = 2$ and
+$\hat\sigma^\star = 3$), and by $\Vstar$, $\Vhatstar$, $\Vpihat$ the
+corresponding value functions.  Our goal is a \emph{state-dependent} bound
+$\alpha \colon \mathcal{S} \to \mathbb{R}_{\ge 0}$ satisfying
+\begin{equation}\label{eq:goal}
+  2 \alpha(s) \;\ge\; \Vpihat(s) - \Vstar(s) \qquad \forall  s \in \mathcal{S}.
+\end{equation}
+
+%% ====================================================================
+\section{Inputs Required}
+%% ====================================================================
+
+Before the sample-path bound computation we need the following, all obtained
+via value iteration on the two models:
+%
+\begin{enumerate}
+  \item $\Vhatstar(s)$ for all $s$ \quad (optimal value function of $\hat M$),
+  \item $\pistar(s)$ for all $s$ \quad (optimal policy of $M$) ---
+        \textbf{only needed for $\alpha_{\max}$}; the $\alphares$ and
+        $\alpha_{\sup}$ variants do not require it,
+  \item $\pihatstar(s)$ for all $s$ \quad (optimal policy of $\hat M$),
+  \item $W_M[w] = \Pr_M(D = w)$ and $W_{\hat M}[w] = \Pr_{\hat M}(D = w)$
+        for $w = 0, \ldots, n$ \quad (demand PMFs),
+  \item $\Sigma$: a set of candidate base-stock levels containing
+        $\sigma^\star$ --- \textbf{only needed for $\alphares$};
+        defaults to $\{0, 1, \ldots, n\}$.
+\end{enumerate}
+
+%% ====================================================================
+\section{Step 1: Cost Mismatch $\varepsilon(s)$}
+%% ====================================================================
+
+The cost mismatch at state $s$ is
+\begin{equation}\label{eq:epsilon}
+  \varepsilon(s)
+  \;=\; \bigl|c_M(s, a) - c_{\hat M}(s, a)\bigr|
+  \;=\; \bigl|h_M(s) - h_{\hat M}(s)\bigr|
+\end{equation}
+where the second equality uses the fact that the ordering cost $p$ is identical
+in both models, so $p a$ cancels.  Note that $\varepsilon$ depends only on
+$s$, not on the action~$a$.
+
+Substituting the holding/shortage costs:
+\begin{equation}\label{eq:epsilon-explicit}
+  \varepsilon(s) =
+  \begin{cases}
+    |c_h - \hat c_h| \cdot s = |4 - 3.8| \cdot s = 0.2 s
+      & \text{if } s \ge 0, \\[4pt]
+    |c_s - \hat c_s| \cdot |s| = |2 - 2| \cdot |s| = 0
+      & \text{if } s < 0.
+  \end{cases}
+\end{equation}
+
+\paragraph{Implementation.}
+\texttt{bounds.py}, lines 94--97:
+\begin{verbatim}
+    h_M  = M.h_vec(states)       # h_M(s) for all s
+    h_Mh = M_hat.h_vec(states)   # h_Mhat(s) for all s
+    epsilon = np.abs(h_M - h_Mh) # shape (num_states,)
+\end{verbatim}
+Output: a vector $\varepsilon \in \mathbb{R}^{|\mathcal{S}|}$ indexed by
+state.
+
+%% ====================================================================
+\section{Step 2: Transition Mismatch $\Delta(s,a)$}
+%% ====================================================================
+
+The transition mismatch measures how differently the two models propagate
+$\Vhatstar$:
+\begin{equation}\label{eq:delta}
+  \Delta(s,a)
+  \;=\; \Bigl|\sum_{s' \in \mathcal{S}} \Vhatstar(s')  P_M(s' \mid s, a)
+        \;-\; \sum_{s' \in \mathcal{S}} \Vhatstar(s')  P_{\hat M}(s' \mid s, a)\Bigr|.
+\end{equation}
+
+%% ====================================================================
+\section{Step 3: Fixed-Point Iteration for $\alpha$}
+%% ====================================================================
+
+We now compute $\alpha(s)$ via fixed-point iteration.  We first present the
+direct ``Q-function style'' formulation that matches the paper's notation
+exactly, then show how the H-array trick makes it computationally tractable.
+
+\subsection{Direct formulation (Q-function version)}
+\label{sec:q-version}
+
+This version uses the full transition kernel $P(s' \mid s, a)$ and follows
+the MDP corollary of Theorem~2 directly.
+
+\paragraph{Precomputation (done once).}
+\begin{itemize}
+  \item \textbf{Cost mismatch} (a vector over states):
+  \begin{equation}\label{eq:eps-q}
+    \varepsilon(s) = |c_M(s,a) - c_{\hat M}(s,a)| = |h_M(s) - h_{\hat M}(s)|
+    \qquad \forall  s \in \mathcal{S}.
+  \end{equation}
+
+  \item \textbf{Transition mismatch} (a matrix over state--action pairs):
+  \begin{equation}\label{eq:delta-q}
+    \Delta(s, a) = \Bigl|
+      \sum_{s' \in \mathcal{S}} \Vhatstar(s')  P_M(s' \mid s, a)
+      - \sum_{s' \in \mathcal{S}} \Vhatstar(s')  P_{\hat M}(s' \mid s, a)
+    \Bigr|
+    \qquad \forall  (s, a).
+  \end{equation}
+  In matrix notation, with $P$ and $\hat P$ denoting the $|\mathcal{S}| \times
+  |\mathcal{A}| \times |\mathcal{S}|$ transition arrays:
+  \[
+    \boldsymbol{\Delta} = \bigl| P  \hat{\mathbf{V}}^\star
+    - \hat P  \hat{\mathbf{V}}^\star \bigr|,
+    \qquad \text{shape: } |\mathcal{S}| \times |\mathcal{A}|.
+  \]
+\end{itemize}
+
+\paragraph{Iteration (until convergence).}
+Initialise $\alpha^0(s) = 0$ for all $s$.  At each iteration $k$:
+
+\begin{enumerate}
+\item \textbf{Propagate $\alpha^k$ through the true dynamics.}
+For every state--action pair $(s, a)$, compute the expected future error
+under the \textbf{true} model:
+\begin{equation}\label{eq:propagate-q}
+  \bigl[P_M \boldsymbol{\alpha}^k\bigr](s, a)
+  \;=\; \sum_{s' \in \mathcal{S}} \alpha^k(s')  P_M(s' \mid s, a).
+\end{equation}
+This is a matrix--vector product: $P_M$ has shape $|\mathcal{S}| \times
+|\mathcal{A}| \times |\mathcal{S}|$ and $\boldsymbol{\alpha}^k$ has shape
+$|\mathcal{S}|$, giving a result of shape $|\mathcal{S}| \times |\mathcal{A}|$.
+
+\item \textbf{Compute the error certificate $\beta^k$.}
+Assemble the three terms into a $|\mathcal{S}| \times |\mathcal{A}|$ matrix:
+\begin{equation}\label{eq:beta-q}
+  \boxed{%
+    \beta^k(s, a)
+    \;=\; \underbrace{\varepsilon(s)}_{\text{cost mismatch}}
+    \;+\; \underbrace{\gamma \sum_{s'} \alpha^k(s')  P_M(s' \mid s, a)}_{\text{propagated future error}}
+    \;+\; \underbrace{\Delta(s, a)}_{\text{transition mismatch}}
+  }
+\end{equation}
+In matrix notation:
+\[
+  \boldsymbol{\beta}^k
+  = \boldsymbol{\varepsilon} \otimes \mathbf{1}_{|\mathcal{A}|}
+  + \gamma  P_M \boldsymbol{\alpha}^k
+  + \boldsymbol{\Delta},
+  \qquad \text{shape: } |\mathcal{S}| \times |\mathcal{A}|.
+\]
+
+\item \textbf{Update $\alpha$.}
+\begin{itemize}
+  \item $\alpha_{\max}$ (tighter): evaluate $\beta^k$ only at the two relevant
+        actions:
+  \begin{equation}\label{eq:alpha-max-q}
+    \alpha^{k+1}_{\max}(s) = \max\!\Big\{
+      \beta^k\bigl(s,  \pistar(s)\bigr),\;\;
+      \beta^k\bigl(s,  \pihatstar(s)\bigr)
+    \Big\}.
+  \end{equation}
+  In code: indexing into the two columns of $\boldsymbol{\beta}^k$ at
+  $\pistar(s)$ and $\pihatstar(s)$, then taking the element-wise max.
+
+  \item $\alpha_{\sup}$ (looser): maximise over \emph{all} actions:
+  \begin{equation}\label{eq:alpha-sup-q}
+    \alpha^{k+1}_{\sup}(s) = \max_{a \in \mathcal{A}}  \beta^k(s, a).
+  \end{equation}
+  In code: $\boldsymbol{\alpha}^{k+1}_{\sup} = \max_{\text{axis}=1}
+  \boldsymbol{\beta}^k$.
+\end{itemize}
+
+\item \textbf{Check convergence}: stop if
+$\max_s |\alpha^{k+1}(s) - \alpha^k(s)| < \texttt{tol}$.
+\end{enumerate}
+
+\paragraph{Pseudocode (Q-function version).}
+\begin{verbatim}
+    # Precompute (once)
+    epsilon[s]   = |h_M(s) - h_Mhat(s)|         for all s       # |S| vector
+    Delta[s, a]  = |P[s,a,:] @ V_hat_star        for all (s,a)   # |S| x |A|
+                   - P_hat[s,a,:] @ V_hat_star|
+
+    # Iterate
+    alpha = zeros(|S|)
+    for k = 0, 1, 2, ...:
+        propagated[s,a] = P[s,a,:] @ alpha      for all (s,a)   # |S| x |A|
+        beta[s,a] = epsilon[s] + gamma * propagated[s,a] + Delta[s,a]
+
+        alpha_new[s] = max( beta[s, pi_star[s]], beta[s, pi_hat_star[s]] )
+        if max|alpha_new - alpha| < tol: break
+        alpha = alpha_new
+\end{verbatim}
+
+\paragraph{Computational cost.}
+The bottleneck is the propagation step~\eqref{eq:propagate-q}: multiplying
+the $|\mathcal{S}| \times |\mathcal{A}| \times |\mathcal{S}|$ transition
+array by the $|\mathcal{S}|$-vector $\boldsymbol{\alpha}^k$.  With
+$|\mathcal{S}| = 1001$ and $|\mathcal{A}| = 501$:
+\[
+  \text{storage: } 1001 \times 501 \times 1001 \approx 5 \times 10^8
+  \text{ entries} \approx 4 \text{GB (float64)},
+\]
+\[
+  \text{per-iteration cost: } O(|\mathcal{S}|^2 \cdot |\mathcal{A}|)
+  \approx 5 \times 10^8 \text{ multiplications}.
+\]
+This is why we use the H-array that is introduced in the next section.
+
+%% ====================================================================
+\section{Step 4: The H-Array Trick (Efficient Implementation)}
+\label{sec:h-array}
+%% ====================================================================
+
+The Q-function version (Section~\ref{sec:q-version}) is conceptually clean
+but computationally infeasible at $\Smax = 500$.  We now show how the
+inventory MDP's structure reduces every transition-matrix operation to a
+one-dimensional convolution, eliminating the need to store or multiply $P$.
+
+\subsection{Key observation: post-order inventory}
+
+In the inventory MDP, the next state is $s' = \clip(s + a - D)$ where
+$D \sim \mathrm{Bin}(n, q)$ has support $\{0, \ldots, n\}$.  For any function
+$f$ over states:
+\begin{equation}\label{eq:h-array-identity}
+  \sum_{s'} f(s')  P(s' \mid s, a)
+  = \sum_{w=0}^{n} W[w] \cdot f\bigl(\clip(s + a - w)\bigr).
+\end{equation}
+The right-hand side depends on $s$ and $a$ \textbf{only through the sum
+$z = s + a$}, which is the \emph{post-order inventory level} (inventory after
+ordering, before demand).  We precompute the \textbf{H-array}:
+\begin{equation}\label{eq:h-array}
+  H_f[z] = \sum_{w=0}^{n} W[w] \cdot f\bigl(\clip(z - w)\bigr),
+  \qquad z \in \{-\Smax,  \ldots,  2\Smax\},
+\end{equation}
+so that $\sum_{s'} f(s') P(s' \mid s, a) = H_f[s+a]$.
+
+\begin{remark}
+The index $z$ ranges over $\{-\Smax, \ldots, 2\Smax\}$ because
+$s + a \in \{-\Smax + 0, \ldots, \Smax + \Smax\}$.  The H-array has length
+$3\Smax + 1 = 1501$, compared to the $1001 \times 501 = 501{,}501$ entries of
+the full $[P \mathbf{f}](s,a)$ matrix.
+\end{remark}
+
+\subsection{Mapping each Q-function step to its H-array equivalent}
+
+We now show how each step from Section~\ref{sec:q-version} translates.
+
+\paragraph{Transition mismatch.}
+The Q-function version computes $\Delta(s,a) = |[P_M \hat{\mathbf{V}}^\star](s,a) -
+[P_{\hat M} \hat{\mathbf{V}}^\star](s,a)|$.  Using H-arrays:
+\begin{align}
+  H_M[z] &= \sum_{w=0}^{n} W_M[w] \cdot \Vhatstar\bigl(\clip(z-w)\bigr),
+  \label{eq:HM} \\
+  H_{\hat M}[z] &= \sum_{w=0}^{n} W_{\hat M}[w] \cdot \Vhatstar\bigl(\clip(z-w)\bigr),
+  \label{eq:HMhat}
+\end{align}
+and
+\begin{equation}\label{eq:h-delta}
+  H_\Delta[z] = |H_M[z] - H_{\hat M}[z]|,
+  \qquad
+  \Delta(s,a) = H_\Delta[s+a].
+\end{equation}
+Instead of an $|\mathcal{S}| \times |\mathcal{A}|$ matrix, we store a single
+vector of length $3\Smax + 1$.
+
+\paragraph{Implementation.}
+\texttt{bounds.py}, lines 100--107:
+\begin{verbatim}
+    H_M  = np.zeros(H_len)   # H_len = 3*s_max + 1
+    H_Mh = np.zeros(H_len)
+    for z in range(-s_max, 2*s_max + 1):
+        for w in range(n_demand):
+            ns = min(max(z - w, -s_max), s_max)
+            H_M[z + s_max]  += W_M[w]  * V_hat_star[ns + s_max]
+            H_Mh[z + s_max] += W_Mh[w] * V_hat_star[ns + s_max]
+    H_delta = np.abs(H_M - H_Mh)
+\end{verbatim}
+
+\paragraph{Propagation of $\alpha$.}
+The Q-function version computes $[P_M \boldsymbol{\alpha}^k](s,a) = \sum_{s'}
+\alpha^k(s') P_M(s'|s,a)$.  Using the H-array:
+\begin{equation}\label{eq:h-alpha}
+  H_\alpha[z] = \sum_{w=0}^{n} W_M[w] \cdot \alpha^k\bigl(\clip(z-w)\bigr),
+  \qquad
+  \sum_{s'} \alpha^k(s') P_M(s'|s,a) = H_\alpha[s+a].
+\end{equation}
+One vector of length $3\Smax + 1$ replaces the full $|\mathcal{S}| \times
+|\mathcal{A}|$ matrix--vector product.
+
+\paragraph{Implementation.}
+\texttt{bounds.py}, lines 115--119:
+\begin{verbatim}
+    H_alpha = np.zeros(H_len)
+    for z in range(-s_max, 2*s_max + 1):
+        for w in range(n_demand):
+            ns = min(max(z - w, -s_max), s_max)
+            H_alpha[z + s_max] += W_M[w] * alpha[ns + s_max]
+\end{verbatim}
+
+% \begin{remark}[Why the true model?]
+% The propagation uses $W_M$ (not $W_{\hat M}$) because $\alpha(s)$ bounds the
+% suboptimality gap under the \emph{true} model's dynamics.  The approximate
+% model's influence is already captured in $H_\Delta$.
+% \end{remark}
+
+\paragraph{Error certificate $\beta$.}
+The Q-function formula~\eqref{eq:beta-q} becomes:
+\begin{equation}\label{eq:beta}
+  \boxed{%
+  \beta(s, a)
+  \;=\; \underbrace{\varepsilon(s)}_{\text{cost mismatch}}
+  \;+\; \underbrace{\gamma \cdot H_\alpha[s + a]}_{\text{propagated future error}}
+  \;+\; \underbrace{H_\Delta[s + a]}_{\text{transition mismatch}}
+  }
+\end{equation}
+This is identical to~\eqref{eq:beta-q}, but with $H_\alpha[s+a]$ replacing
+$\sum_{s'} \alpha^k(s') P_M(s'|s,a)$ and $H_\Delta[s+a]$ replacing
+$\Delta(s,a)$ --- both are just look-ups into precomputed arrays.
+
+\paragraph{Update of $\alpha$.}
+
+\subparagraph{Variant 1: $\alpha_{\max}$ (tighter).}
+Maximise only over the two relevant policies:
+\begin{equation}\label{eq:alpha-max}
+  \alpha^{k+1}_{\max}(s)
+  \;=\; \max\!\Big\{
+    \beta\bigl(s,  \pistar(s)\bigr),\;\;
+    \beta\bigl(s,  \pihatstar(s)\bigr)
+  \Big\}.
+\end{equation}
+This suffices for the bound~\eqref{eq:goal} because the suboptimality gap
+$\Vpihat(s) - \Vstar(s)$ involves only these two policies.
+
+\paragraph{Implementation.}
+\texttt{bounds.py}, lines 122--131:
+\begin{verbatim}
+    alpha_new_max = np.zeros(num_states)
+    for i, s in enumerate(states):
+        s_int = int(s)
+        best = -inf
+        for a in [pi_star[i], pi_hat_star[i]]:
+            z_idx = min(s_int + a, 2*s_max) + s_max
+            beta_sa = epsilon[i] + gamma * H_alpha[z_idx] + H_delta[z_idx]
+            if beta_sa > best:
+                best = beta_sa
+        alpha_new_max[i] = best
+\end{verbatim}
+
+\subparagraph{Variant 2: $\alpha_{\sup}$ (looser).}
+Maximise over \emph{all} actions:
+\begin{equation}\label{eq:alpha-sup}
+  \alpha^{k+1}_{\sup}(s)
+  \;=\; \max_{a \in \mathcal{A}}  \beta(s, a)
+  \;=\; \varepsilon(s)
+  \;+\; \max_{a = 0, \ldots, \Smax}
+        \bigl[\gamma \cdot H_\alpha[s+a] + H_\Delta[s+a]\bigr].
+\end{equation}
+The second equality uses the fact that $\varepsilon(s)$ does not depend on~$a$.
+For a given state $s$, the maximisation ranges over $z = s + a$ for
+$a = 0, \ldots, \Smax$, i.e., $z \in \{s, \ldots, s + \Smax\}$.
+
+\paragraph{Implementation.}
+\texttt{bounds.py}, lines 137--144:
+\begin{verbatim}
+    combo = gamma * H_alpha + H_delta    # shape (H_len,)
+    alpha_new_sup = np.zeros(num_states)
+    for i, s in enumerate(states):
+        s_int = int(s)
+        z_lo = s_int + s_max             # array index for a=0
+        z_hi = min(s_int + s_max, 2*s_max) + s_max  # for a=s_max
+        alpha_new_sup[i] = epsilon[i] + np.max(combo[z_lo : z_hi + 1])
+\end{verbatim}
+
+\subparagraph{Variant 3: $\alphares$ (restricted action set).}
+
+The $\alpha_{\max}$ variant requires the true optimal policy $\pistar$, while
+$\alpha_{\sup}$ searches over all $|\mathcal{A}| = \Smax + 1$ actions.  The
+\emph{restricted} variant provides a middle ground by exploiting
+\textbf{structural knowledge about the policy class} without requiring
+$\pistar$ itself.
+
+For the inventory MDP, classical results from inventory theory guarantee that
+the optimal policy is a \emph{base-stock policy}:
+\[
+  \pistar(s) = \max(0,\; \sigma^\star - s)
+\]
+for some base-stock level $\sigma^\star \in \{0, 1, \ldots, \Smax\}$.
+Furthermore, the optimal base-stock level satisfies $\sigma^\star \le n$,
+where $n = 10$ is the maximum possible demand (the support of the Binomial
+distribution).  At any base-stock level $\sigma > n$, shortage is impossible
+since $D \le n < \sigma$, so the only effect of increasing $\sigma$ further is
+higher holding and ordering costs.  Combined with $\sigma^\star \ge 0$:
+\[
+  \sigma^\star \in \Sigma = \{0, 1, 2, \ldots, n\} = \{0, 1, \ldots, 10\}.
+\]
+
+The restricted action set at each state is
+\begin{equation}\label{eq:restricted-action-set}
+  A_{\mathrm{res}}(s)
+  \;=\; \bigl\{\max(0, \sigma - s) : \sigma \in \Sigma\bigr\}
+        \;\cup\; \bigl\{\pihatstar(s)\bigr\},
+\end{equation}
+which is guaranteed to contain $\pistar(s)$ (since $\sigma^\star \in \Sigma$)
+and $\pihatstar(s)$ (since $\hat\sigma = 3 \in \Sigma$).  Hence
+$\{\pistar(s), \pihatstar(s)\} \subseteq A_{\mathrm{res}}(s) \subseteq
+\mathcal{A}$, and the Theorem~2 condition is satisfied.
+
+The size of the restricted set is small: $|A_{\mathrm{res}}(s)| \le
+|\Sigma| + 1 = 12$ for all $s$, compared to $|\mathcal{A}| = 501$ for
+$\alpha_{\sup}$.
+
+The update rule is:
+\begin{equation}\label{eq:alpha-restricted}
+  \alpha^{k+1}_{\mathrm{res}}(s)
+  \;=\; \max_{a \in A_{\mathrm{res}}(s)}  \beta(s, a)
+  \;=\; \varepsilon(s)
+  \;+\; \max_{a \in A_{\mathrm{res}}(s)}
+        \bigl[\gamma \cdot H_\alpha[s+a] + H_\Delta[s+a]\bigr].
+\end{equation}
+
+\paragraph{H-array optimisation for the restricted variant.}
+Each candidate action $a = \max(0, \sigma - s)$ maps to post-order level
+$z = s + a = s + \max(0, \sigma - s) = \max(s, \sigma)$.  The candidate
+post-order levels therefore simplify by case:
+
+\begin{itemize}
+  \item \textbf{$s \ge n$}: all candidates satisfy $\sigma \le n \le s$, so
+        $\max(s, \sigma) = s$ for every $\sigma \in \Sigma$.  The only
+        candidate is $z = s$:
+        \[
+          \alphares^{k+1}(s) = \varepsilon(s) + \gamma H_\alpha[s] + H_\Delta[s].
+        \]
+  \item \textbf{$0 \le s < n$}: for $\sigma \le s$, $\max(s, \sigma) = s$;
+        for $\sigma > s$, $\max(s, \sigma) = \sigma$.  The distinct candidate
+        post-order levels are $\{s, s+1, \ldots, n\}$:
+        \[
+          \alphares^{k+1}(s) = \varepsilon(s) + \max_{z \in \{s, \ldots, n\}}
+          \bigl[\gamma H_\alpha[z] + H_\Delta[z]\bigr].
+        \]
+  \item \textbf{$s < 0$}: $\max(0, \sigma - s) = \sigma - s > 0$ for all
+        $\sigma \ge 0$, giving $z = \sigma$.  The candidate post-order levels
+        are $\Sigma = \{0, 1, \ldots, n\}$:
+        \[
+          \alphares^{k+1}(s) = \varepsilon(s) + \max_{\sigma \in \Sigma}
+          \bigl[\gamma H_\alpha[\sigma] + H_\Delta[\sigma]\bigr].
+        \]
+\end{itemize}
+
+\paragraph{Implementation.}
+\texttt{bounds.py}, function \texttt{sample\_path\_bound\_restricted},
+inner loop:
+\begin{verbatim}
+    combo = gamma * H_alpha + H_delta    # shape (H_len,)
+    alpha_new = np.zeros(num_states)
+    for i, s in enumerate(states):
+        s_int = int(s)
+        if s_int >= n:
+            # All base-stock candidates give a=0, z=s
+            z_idx = s_int + s_max
+            alpha_new[i] = epsilon[i] + combo[z_idx]
+        elif s_int >= 0:
+            # Candidate z values: {s, s+1, ..., n}
+            z_lo = s_int + s_max
+            z_hi = n + s_max
+            alpha_new[i] = epsilon[i] + np.max(combo[z_lo:z_hi + 1])
+        else:
+            # s < 0: candidate z values are Sigma
+            alpha_new[i] = epsilon[i] + np.max(combo[Sigma_arr + s_max])
+\end{verbatim}
+
+\paragraph{Ordering of bounds.}
+
+By construction, $\alpha_{\max}(s) \le \alphares(s) \le \alpha_{\sup}(s)$ for all $s$, since
+$\alpha_{\max}$ maximises over a \emph{subset} of the actions in $A_{\mathrm{res}}(s)$,
+which is itself a subset of $\mathcal{A}$.
+
+\paragraph{Convergence check.}
+
+After computing $\alpha^{k+1}$, check:
+\begin{equation}\label{eq:convergence}
+  \delta^k \;=\; \max_{s \in \mathcal{S}} \bigl|\alpha^{k+1}(s) - \alpha^k(s)\bigr|
+  \;<\; \texttt{tol} = 10^{-10}.
+\end{equation}
+If satisfied, terminate.  Otherwise, set $\alpha^k \leftarrow \alpha^{k+1}$ and
+return to the propagation step.
+
+\paragraph{Implementation.}
+\texttt{bounds.py}, lines 146--152:
+\begin{verbatim}
+    diff = np.max(np.abs(alpha_new_max - alpha))
+    history.append(diff)
+    alpha = alpha_new_max
+    if diff < tol:
+        break
+\end{verbatim}
+
+\subsection{Correspondence between the two formulations}
+
+The table below summarises how each quantity in the Q-function version maps to
+its H-array equivalent.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lll}
+\toprule
+\textbf{Quantity} & \textbf{Q-function version} & \textbf{H-array version} \\
+\midrule
+Transition mismatch
+  & $\Delta(s,a) = |[P_M \hat{\mathbf{V}}^\star - P_{\hat M}\hat{\mathbf{V}}^\star](s,a)|$
+  & $H_\Delta[s+a]$ \\
+Propagated error
+  & $[P_M \boldsymbol{\alpha}^k](s,a)$
+  & $H_\alpha[s+a]$ \\
+Error certificate
+  & $\beta^k(s,a) = \varepsilon(s) + \gamma [P_M\boldsymbol{\alpha}^k](s,a) + \Delta(s,a)$
+  & $\varepsilon(s) + \gamma H_\alpha[s+a] + H_\Delta[s+a]$ \\
+Storage
+  & $|\mathcal{S}| \times |\mathcal{A}|$ matrices ($\sim\!501$K entries)
+  & vectors of length $3\Smax+1$ (1501 entries) \\
+Per-iteration cost
+  & $O(|\mathcal{S}|^2 \cdot |\mathcal{A}|) \approx 5 \times 10^8$
+  & $O(n \cdot (3\Smax + 1)) \approx 1.7 \times 10^4$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The H-array trick exploits the fact that in the inventory MDP, $P(s'|s,a)$
+depends on $(s,a)$ only through the post-order level $z = s + a$.  This
+collapses the two-dimensional $(s,a)$ index into a single index $z$, reducing
+storage by a factor of $\sim\!334\times$ and computation by a factor of
+$\sim\!29{,}000\times$ per iteration.
+
+%% ====================================================================
+\section{Convergence Guarantee}
+%% ====================================================================
+
+Define the operator $\mathcal{T}\colon \mathbb{R}^{|\mathcal{S}|} \to
+\mathbb{R}^{|\mathcal{S}|}$ by
+\[
+  (\mathcal{T}\alpha)(s)
+  \;=\; \max_{a \in A(s)}
+        \Bigl[\varepsilon(s) + \gamma \sum_{s'} \alpha(s')  P_M(s' \mid s, a)
+        + H_\Delta[s+a]\Bigr],
+\]
+where $A(s) = \{\pistar(s), \pihatstar(s)\}$ for $\alpha_{\max}$,
+$A(s) = A_{\mathrm{res}}(s)$ for $\alphares$~\eqref{eq:restricted-action-set},
+and $A(s) = \mathcal{A}$ for $\alpha_{\sup}$.
+
+For any $\alpha, \alpha' \in \mathbb{R}^{|\mathcal{S}|}$:
+\begin{align*}
+  \bigl|(\mathcal{T}\alpha)(s) - (\mathcal{T}\alpha')(s)\bigr|
+  &\;\le\; \gamma \max_{a \in A(s)} \sum_{s'} \bigl|\alpha(s') - \alpha'(s')\bigr|
+             P_M(s' \mid s, a) \\
+  &\;\le\; \gamma  \|\alpha - \alpha'\|_\infty,
+\end{align*}
+since $P_M(\cdot \mid s, a)$ is a probability distribution.  Hence $\mathcal{T}$
+is a $\gamma$-contraction in sup-norm, and by Banach's fixed-point theorem
+\[
+  \|\alpha^{k+1} - \alpha^k\|_\infty
+  \;\le\; \gamma^k   \|\alpha^1 - \alpha^0\|_\infty.
+\]
+With $\gamma = 0.75$, reaching tolerance $10^{-10}$ requires roughly
+$k \approx \log(10^{-10}) / \log(0.75) \approx 80$ iterations (in practice:
+94 iterations).
+
+%% ====================================================================
+\section{Full Algorithm}
+%% ====================================================================
+
+\begin{algorithm}[H]
+\caption{Sample-Path Dependent AIS Bound}
+\label{alg:sample-path}
+\begin{algorithmic}[1]
+\Require $M$, $\hat M$, $\Vhatstar$, $\pistar$, $\pihatstar$, $\Sigma$, tolerance $\texttt{tol}$
+\Ensure $\alpha_{\max}$, $\alphares$, $\alpha_{\sup}$ such that
+        $2\alpha(s) \ge \Vpihat(s) - \Vstar(s)$ for all $s$
+\Statex
+\State \textbf{Precompute cost mismatch:}
+  $\varepsilon(s) \gets |h_M(s) - h_{\hat M}(s)|$ for all $s$
+  \hfill \textit{Eq.~\eqref{eq:epsilon}}
+\Statex
+\State \textbf{Precompute transition mismatch H-array:}
+\For{$z = -\Smax$ \textbf{to} $2\Smax$}
+  \State $H_M[z] \gets \sum_{w=0}^{n} W_M[w] \cdot \Vhatstar(\clip(z-w))$
+  \State $H_{\hat M}[z] \gets \sum_{w=0}^{n} W_{\hat M}[w] \cdot \Vhatstar(\clip(z-w))$
+\EndFor
+\State $H_\Delta[z] \gets |H_M[z] - H_{\hat M}[z]|$ for all $z$
+  \hfill \textit{Eq.~\eqref{eq:h-delta}}
+\Statex
+\State \textbf{Fixed-point iteration:}
+\State $\alpha^0(s) \gets 0$ for all $s$
+\For{$k = 0, 1, 2, \ldots$}
+  \State Build $H_\alpha[z] \gets \sum_{w=0}^{n} W_M[w] \cdot \alpha^k(\clip(z-w))$
+    for all $z$
+    \hfill \textit{Eq.~\eqref{eq:h-alpha}}
+  \For{each state $s$}
+    \State $\alpha^{k+1}_{\max}(s) \gets
+      \max_{a \in \{\pistar(s),  \pihatstar(s)\}}
+      \bigl[\varepsilon(s) + \gamma H_\alpha[s+a] + H_\Delta[s+a]\bigr]$
+      \hfill \textit{Eq.~\eqref{eq:alpha-max}}
+    \State $\alphares^{k+1}(s) \gets
+      \max_{a \in A_{\mathrm{res}}(s)}
+      \bigl[\varepsilon(s) + \gamma H_\alpha[s+a] + H_\Delta[s+a]\bigr]$
+      \hfill \textit{Eq.~\eqref{eq:alpha-restricted}}
+    \State $\alpha^{k+1}_{\sup}(s) \gets
+      \varepsilon(s) + \max_{a=0}^{\Smax}
+      \bigl[\gamma H_\alpha[s+a] + H_\Delta[s+a]\bigr]$
+      \hfill \textit{Eq.~\eqref{eq:alpha-sup}}
+  \EndFor
+  \If{$\max_s |\alpha^{k+1}_{\max}(s) - \alpha^k(s)| < \texttt{tol}$}
+    \State \textbf{break}
+  \EndIf
+\EndFor
+\State \Return $\alpha_{\max}$, $\alphares$, $\alpha_{\sup}$
+\end{algorithmic}
+\end{algorithm}
+
+%% ====================================================================
+\section{Computational Complexity}
+%% ====================================================================
+
+Let $N = 2\Smax + 1 = |\mathcal{S}|$ and $n = 10$ (demand support size).
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Step & Computed once & Per iteration \\
+\midrule
+Cost mismatch $\varepsilon$ & $O(N)$ & --- \\
+Transition mismatch $H_\Delta$ & $O(n \cdot (3\Smax+1))$ & --- \\
+Propagation H-array $H_\alpha$ & --- & $O(n \cdot (3\Smax+1))$ \\
+$\alpha_{\max}$ update & --- & $O(2N)$ \\
+$\alphares$ update & --- & $O(N \cdot n)$ \\
+$\alpha_{\sup}$ update & --- & $O(N \cdot \Smax)$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+With $\Smax = 500$, $n = 10$, and $\sim 94$ iterations, the total cost is
+dominated by the $\alpha_{\sup}$ update at $O(N \cdot \Smax) \approx 5 \times
+10^5$ per iteration.  The $\alpha_{\max}$ variant requires only $O(N)$ per
+iteration and converges in the same number of iterations.  The $\alphares$
+variant has per-iteration cost $O(N \cdot n) \approx 10^4$, comparable to the
+H-array build step and roughly $50\times$ cheaper than $\alpha_{\sup}$.
+
+The key saving is that no transition matrix (which would require
+$O(N^2 \cdot |\mathcal{A}|) \approx 5 \times 10^8$ entries) is ever formed or
+stored.
+
+%% ====================================================================
+\section{Error Decomposition at the Fixed Point}
+%% ====================================================================
+
+At convergence, $\alpha = \mathcal{T}\alpha$, so for the action
+$a = \pihatstar(s)$ (which achieves the max at most states in the operating
+region):
+\begin{equation}\label{eq:decomposition}
+  \alpha(s)
+  \;=\; \underbrace{\varepsilon\bigl(s, \pihatstar(s)\bigr)}_{\text{cost mismatch}}
+  \;+\; \underbrace{\gamma \sum_{s'} \alpha(s')  P_M\bigl(s' \mid s, \pihatstar(s)\bigr)}_{\text{propagated future error}}
+  \;+\; \underbrace{\Delta\bigl(s, \pihatstar(s)\bigr)}_{\text{transition mismatch on }\Vhatstar}.
+\end{equation}
+
+This decomposition reveals which source of model mismatch dominates at each
+state:
+\begin{itemize}
+  \item For $s \ge 0$: the cost mismatch $\varepsilon(s) = 0.2 s$ grows
+        linearly, eventually dominating.
+  \item For $s < 0$: the cost mismatch is zero ($c_s$ is identical), so the
+        bound is driven entirely by the transition mismatch $\Delta$ and
+        propagated error.
+  \item Near the base-stock levels ($s \in \{-8, \ldots, 2\}$): the propagated
+        future error $\gamma \mathbb{E}[\alpha(s')]$ is the dominant term, since
+        the local cost and transition mismatches are small.
+\end{itemize}
+
+%% ====================================================================
+\section{Numerical Results}
+%% ====================================================================
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Method & Max bound in $\{-8,\ldots,2\}$ & Max bound (all $s$) \\
+\midrule
+True gap $\Vpihat - \Vstar$ & $2.01$ & $2.01$ \\
+$2\alpha_{\max}$ (sample-path, needs $\pistar$) & $54.98$ & $902.40$ \\
+$2\alphares$ (sample-path, restricted) & $56.34$ & $902.40$ \\
+$2\alpha_{\sup}$ (sample-path, all actions) & $718.18$ & $917.38$ \\
+Weighted-norm ($\ell = 0.015$) & $65.92$ & $1568.18$ \\
+Sup-norm ($\ell = 0$) & $891.20$ & $891.20$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+In the operating region $\{-8, \ldots, 2\}$:
+\begin{itemize}
+  \item $2\alpha_{\max}$ is $\mathbf{0.83\times}$ the weighted-norm bound
+        (tighter by 17\%).
+  \item $2\alphares$ is $\mathbf{0.88\times}$ the weighted-norm bound ---
+        nearly as tight as $\alpha_{\max}$ \textbf{without requiring $\pistar$}.
+  \item $2\alpha_{\max}$ is $\mathbf{0.062\times}$ the sup-norm bound (tighter
+        by a factor of 16).
+  \item The ordering $\alpha_{\max}(s) \le \alphares(s) \le \alpha_{\sup}(s)$
+        holds for all $s$ (as expected).
+  \item All bounds are valid everywhere: $\min_s [2\alpha(s) - (\Vpihat(s)
+        - \Vstar(s))] \ge 0$ for each variant.
+\end{itemize}
+
+%% ====================================================================
+\section{Remark: When the True Transition Kernel Is Unknown}
+%% ====================================================================
+
+Both the sample-path bound and the weighted-norm bound from the model
+approximation paper require access to the true model's one-step transition
+probabilities~$P_M(s' \mid s, a)$.  Specifically:
+\begin{itemize}
+  \item The transition mismatch $\Delta(s,a)$ evaluates
+        $\sum_{s'} \Vhatstar(s') P_M(s' \mid s, a)$.
+  \item The propagation step computes
+        $\sum_{s'} \alpha(s') P_M(s' \mid s, a)$.
+  \item The weighted contraction coefficient $\kappa$ requires
+        $\sum_{s'} w(s') P_M(s' \mid s, a)$.
+\end{itemize}
+
+In settings where $P_M$ is not available but one has structural knowledge
+about how $P_M$ and $P_{\hat M}$ may differ, these quantities can be
+\emph{upper bounded} without evaluating $P_M$ directly.  For the transition
+mismatch, a standard bound via total variation distance gives:
+\begin{equation}\label{eq:tv-bound}
+  \Delta(s,a)
+  \;=\; \Bigl|\sum_{s'} \Vhatstar(s')\bigl[P_M(s'|s,a) - P_{\hat M}(s'|s,a)\bigr]\Bigr|
+  \;\le\; \|\Vhatstar\|_\infty \cdot
+          \bigl\|P_M(\cdot|s,a) - P_{\hat M}(\cdot|s,a)\bigr\|_{\mathrm{TV}},
+\end{equation}
+where $\|\cdot\|_{\mathrm{TV}}$ denotes the total variation distance (half the
+$L^1$ norm).  If one has an upper bound $\bar\delta(s,a)$ on the total
+variation distance --- for example, from knowing that the model parameters lie
+in some uncertainty set --- then~\eqref{eq:tv-bound} provides a computable
+surrogate for $\Delta(s,a)$ that does not require evaluating $P_M$.
+
+Similarly, the propagation term can be routed through $P_{\hat M}$ with a
+correction:
+\[
+  \sum_{s'} \alpha(s') P_M(s'|s,a)
+  \;\le\; \sum_{s'} \alpha(s') P_{\hat M}(s'|s,a)
+  \;+\; \|\alpha\|_\infty \cdot
+        \bigl\|P_M(\cdot|s,a) - P_{\hat M}(\cdot|s,a)\bigr\|_{\mathrm{TV}}.
+\]
+
+The resulting bounds are looser but remain valid, and they connect to the
+robust/distributionally-robust MDP literature where one optimises over a
+worst-case transition kernel within an uncertainty set around $P_{\hat M}$.
+
+\end{document}
