@@ -1,0 +1,263 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{hyperref}
+
+\newcommand{\Smax}{S_{\max}}
+\newcommand{\Vhat}{\hat V}
+\newcommand{\pihat}{\hat\pi}
+
+\title{Computation steps for the \emph{signed} sample-path bound\\
+(Extended Theorems 3 and 4) for the inventory control example in [1]}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Problem Setup}
+We use the same two finite-horizon MDPs as the absolute-value note, sharing the
+state space $\mathcal S=\{-\Smax,\dots,\Smax\}$ and action space
+$\mathcal A=\{0,\dots,\Smax\}$:
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Parameter & True model $M$ & Approximate model $\hat M$\\
+\midrule
+Discount factor $\gamma$ & 0.75 & 0.75\\
+Demand $D\sim\mathrm{Bin}(n,q)$ & $n=10;\,q=0.4$ & $n=10;\,q=0.5$\\
+Holding cost $c_h$ & 4 & 3.8\\
+Shortage cost $c_s$ & 2 & 2\\
+Ordering cost $p$ & 5 & 5\\
+$\Smax$ & 500 & 500\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Per-step cost $c(s,a)=p\,a+h(s)$ with $h(s)=c_h s$ for $s\ge 0$ and $-c_s s$ for
+$s<0$; deterministic-given-demand dynamics $s'=\mathrm{clip}(s+a-D)$. The optimal
+policies $\pi^\star,\pihat^\star$ are base-stock with levels $\sigma^\star=2$,
+$\hat\sigma^\star=3$. We work over horizon $T=100$ and report at $t=1$.
+
+\paragraph{Goal.}
+The absolute-value note certifies $|V^{\pihat^\star}-V^\star|\le 2\alpha$. Here we
+compute the \emph{signed} bound, which keeps the sign of every mismatch and is
+substantially tighter:
+\begin{equation}
+V^{\pihat^\star}(s)-V^\star(s)\ \le\ U(s)
+\qquad\text{and}\qquad
+V^{\pihat^\star}(s)-V^\star(s)\ \ge\ L(s).
+\label{eq:goal}
+\end{equation}
+
+\section{Key Idea: Two Signed Streams Sharing the Baseline $\Vhat^\star$}
+Instead of a single non-negative $\alpha$, we track \emph{two signed} error
+streams, both measured against the approximate optimal value $\Vhat^\star$:
+\begin{align}
+\alpha^{\pihat^\star}_t(s) &= V^{\pihat^\star}_t(s)-\Vhat^\star_t(s)
+&&\text{(policy-evaluation stream),}\\
+\alpha^{\star}_t(s) &= V^{\star}_t(s)-\Vhat^\star_t(s)
+&&\text{(optimality stream).}
+\end{align}
+Their difference is exactly the quantity we want, so the upper bound at $t=1$ is
+\begin{equation}
+U(s)\ =\ \alpha^{\pihat^\star}_1(s)\ -\ \alpha^{\star}_1(s).
+\label{eq:U}
+\end{equation}
+The two streams are computed differently:
+\begin{itemize}
+\item the policy-evaluation stream is an \textbf{exact} recursion (Lemma~1),
+anchored at the single \emph{known} action $\pihat^\star_t(s)$ --- no action
+search;
+\item the optimality stream is a \textbf{sub-solution} (Lemma~2): because it must
+satisfy $\alpha^\star_t\le\beta^\star_t(s,\pi^\star_t(s))$, we take a
+\textbf{\texttt{min}} over a candidate action set that is guaranteed to contain
+$\pi^\star(s)$.
+\end{itemize}
+This \texttt{min} (vs.\ the \texttt{max} of the absolute-value bound) and the
+\emph{signed} mismatches below are the only structural differences from the
+absolute-value computation.
+
+\section{Inputs Required}
+All obtained by backward induction on the two models:
+\begin{enumerate}
+\item $\Vhat^\star_t(s)$ for all $s,t$ (optimal value of $\hat M$);
+\item $\pihat^\star_t(s)$ for all $s,t$ (optimal policy of $\hat M$) --- anchors the
+policy-evaluation stream;
+\item $\pi^\star_t(s)$ for all $s,t$ (optimal policy of $M$) --- needed only for the
+$U_{\max}$ variant;
+\item $V^{\pihat^\star}_t(s)$ (true-model value of $\pihat^\star$), for validation
+and the lower edge;
+\item demand PMFs $W_M[w],W_{\hat M}[w]$, $w=0,\dots,n$.
+\end{enumerate}
+
+\section{Step 1: Signed Cost Mismatch $\varepsilon_t(s)$}
+Identical to the absolute-value note \emph{except no absolute value}:
+\begin{equation}
+\varepsilon_t(s)=\gamma^{\,t-1}\bigl(h_M(s)-h_{\hat M}(s)\bigr)
+=\gamma^{\,t-1}\cdot
+\begin{cases}
+(c_h-\hat c_h)\,s = 0.2\,s, & s\ge 0,\\
+0, & s<0.
+\end{cases}
+\label{eq:eps}
+\end{equation}
+The ordering cost $p$ is identical in both models, so $p\,a$ cancels; $\varepsilon_t$
+depends only on $s$. (Code: \texttt{eps\_signed\_base = M.h\_vec(states) -
+M\_hat.h\_vec(states)}, then scaled by $\gamma^{t-1}$.)
+
+\section{Step 2: Signed Transition Mismatch $\Delta_t(s,a)$}
+Measures how differently the two kernels propagate the \emph{shared} baseline
+$\Vhat^\star_{t+1}$, again \emph{without} absolute value:
+\begin{equation}
+\Delta_t(s,a)=
+\sum_{s'}\Vhat^\star_{t+1}(s')P_M(s'\mid s,a)
+-\sum_{s'}\Vhat^\star_{t+1}(s')P_{\hat M}(s'\mid s,a).
+\label{eq:delta}
+\end{equation}
+As in the absolute-value note this depends on $(s,a)$ only through the post-order
+level $z=s+a$, so it is stored as a single vector
+$H_\Delta[z]=H_M[z]-H_{\hat M}[z]$ (length $3\Smax+1$); the only change is that the
+$|\cdot|$ around $H_M-H_{\hat M}$ is dropped.
+
+\section{Step 3: The Two Backward Recursions}
+Terminal ($t=T$): both streams start from the action-independent terminal mismatch
+$\Delta_T=\gamma^{\,T-1}(h_M-h_{\hat M})$. For $t=T-1,\dots,1$ define the shared
+\emph{combined} array
+\begin{equation}
+\mathrm{combo}^{(\bullet)}_t[z]
+=H_\Delta[z]+H_{\alpha^{(\bullet)}_{t+1}}[z],
+\qquad
+H_{\alpha}[z]=\sum_{w}W_M[w]\,\alpha\bigl(\mathrm{clip}(z-w)\bigr),
+\label{eq:combo}
+\end{equation}
+where the propagation uses the \emph{true} kernel $W_M$ and carries no extra
+$\gamma$ (the discount is already baked into $\varepsilon_t$ and $\Delta_t$). Then:
+
+\paragraph{Policy-evaluation stream (exact, anchored at $\pihat^\star$).}
+\begin{equation}
+\alpha^{\pihat^\star}_t(s)=\varepsilon_t(s)+\mathrm{combo}^{(\pihat^\star)}_t\!\bigl[s+\pihat^\star_t(s)\bigr].
+\label{eq:ph}
+\end{equation}
+A single look-up at the known action: no search, exact (Lemma~1 equality).
+
+\paragraph{Optimality stream (sub-solution, \texttt{min} over candidates).}
+\begin{equation}
+\alpha^{\star}_t(s)=\varepsilon_t(s)+\min_{a\in\mathcal C(s)}
+\mathrm{combo}^{(\star)}_t\!\bigl[s+a\bigr],
+\label{eq:star}
+\end{equation}
+where $\mathcal C(s)$ is a candidate set \emph{guaranteed to contain}
+$\pi^\star(s)$. The three variants differ only in $\mathcal C(s)$:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+variant & candidate set $\mathcal C(s)$ & needs true $\pi^\star$?\\
+\midrule
+$U_{\max}$ & $\{\pi^\star_t(s)\}$ & \textbf{yes}\\
+$U_{\mathrm{res}}$ & feasible base-stock levels $z\in\Sigma$, capped to $z\le s+\Smax$ & \textbf{no} (only $\Sigma$)\\
+$U_{\sup}$ & all feasible actions $a\in\{0,\dots,\Smax\}$ & no\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Feasibility cap (the one subtlety).}
+Because the optimality stream takes a \texttt{min} (not a \texttt{max}), the
+restricted candidate set must be capped to feasible actions $a\le\Smax$, i.e.\
+post-order levels $z\le s+\Smax$. At extreme-negative states a base-stock level
+$\sigma$ may be unreachable in one step ($\sigma-s>\Smax$); without the cap the
+\texttt{min} could select an infeasible action and break the ordering
+$U_{\mathrm{res}}\le U_{\sup}$. (For $s\ge n$ only $a=0$ is relevant; for
+$0\le s<n$ the relevant levels are $z\in\{s,\dots,n\}$.)
+
+\paragraph{Upper bound.}
+By \eqref{eq:U}, $U_{\bullet}(s)=\alpha^{\pihat^\star}_1(s)-\alpha^{\star}_{\bullet,1}(s)$.
+Since $\texttt{min}$ over a smaller set is larger,
+$\alpha^\star_{\max}\ge\alpha^\star_{\mathrm{res}}\ge\alpha^\star_{\sup}$, giving
+the same ordering as the absolute-value bound:
+$U_{\max}\le U_{\mathrm{res}}\le U_{\sup}$.
+
+\section{Lower Edge (Extended Theorem 4, Eq.~34)}
+The in-framework computable lower bound collapses to the trivial
+$V^{\pihat^\star}-V^\star\ge 0$ (the optimality super-solution anchored at
+$\pihat^\star$ coincides with the policy-evaluation stream). A \emph{non-trivial}
+lower edge uses the true-model advantage of $\pihat^\star$:
+\begin{equation}
+L(s)=Q^{\pihat^\star}_1\!\bigl(s,\pihat^\star(s)\bigr)-Q^\star_1\!\bigl(s,\pihat^\star(s)\bigr)
+     =V^{\pihat^\star}_1(s)-\Bigl[c_1\bigl(s,\pihat^\star(s)\bigr)+\textstyle\sum_w W_M[w]\,V^\star_2\bigl(\mathrm{clip}(s+\pihat^\star(s)-w)\bigr)\Bigr].
+\label{eq:L}
+\end{equation}
+This needs the true $V^\star$, so it is \emph{demonstrative} (we solve the true
+model anyway). By construction $0\le L(s)\le V^{\pihat^\star}_1(s)-V^\star_1(s)$.
+
+\section{Full Algorithm}
+\begin{algorithm}[H]
+\caption{Signed sample-path bound (Extended Thm 3/4)}
+\begin{algorithmic}[1]
+\Require $M,\hat M,\Vhat^\star_{\cdot},\pi^\star_{\cdot},\pihat^\star_{\cdot}$, horizon $T$, base-stock set $\Sigma$
+\Ensure $U_{\max},U_{\mathrm{res}},U_{\sup}$ (upper) and $L$ (lower edge)
+\State $\varepsilon_{\text{base}}(s)\gets h_M(s)-h_{\hat M}(s)$ \Comment{signed, Eq.~\eqref{eq:eps}}
+\State terminal: $\alpha^{\pihat^\star}_T=\alpha^\star_T\gets\gamma^{T-1}\varepsilon_{\text{base}}$
+\For{$t=T-1,\dots,1$}
+  \State $H_\Delta[z]\gets H_M[z]-H_{\hat M}[z]$ on $\Vhat^\star_{t+1}$ \Comment{signed, Eq.~\eqref{eq:delta}}
+  \State $\mathrm{combo}^{(\bullet)}\gets H_\Delta+H_{\alpha^{(\bullet)}_{t+1}}$ \Comment{Eq.~\eqref{eq:combo}}
+  \For{each state $s$}
+    \State $\alpha^{\pihat^\star}_t(s)\gets\varepsilon_t(s)+\mathrm{combo}^{(\pihat^\star)}[s+\pihat^\star_t(s)]$ \Comment{Eq.~\eqref{eq:ph}}
+    \State $\alpha^\star_{\bullet,t}(s)\gets\varepsilon_t(s)+\min_{a\in\mathcal C(s)}\mathrm{combo}^{(\star)}[s+a]$ \Comment{Eq.~\eqref{eq:star}}
+  \EndFor
+\EndFor
+\State $U_\bullet\gets\alpha^{\pihat^\star}_1-\alpha^\star_{\bullet,1}$;\quad compute $L$ via Eq.~\eqref{eq:L}
+\State \Return $U_{\max},U_{\mathrm{res}},U_{\sup},L$
+\end{algorithmic}
+\end{algorithm}
+
+\noindent\emph{H-array note.} As in the absolute-value computation, every kernel
+operation ($H_\Delta$ and the propagation $H_\alpha$) depends on $(s,a)$ only
+through $z=s+a$, so each is a length-$(3\Smax+1)$ vector rather than an
+$|\mathcal S|\times|\mathcal A|$ matrix; we omit the details here.
+
+\section{Numerical Results ($T=100$, max over the operating region $\{-7,\dots,3\}$)}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Quantity & Max over $\{-7,\dots,3\}$ & Notes\\
+\midrule
+True gap $V^{\pihat^\star}-V^\star$ & 2.01 & target\\
+\midrule
+Signed $U_{\max}$  & 2.06 & nearly exact\\
+Signed $U_{\mathrm{res}}$ & 2.80 & no true $\pi^\star$\\
+Signed $U_{\sup}$  & 2.80 & \\
+\midrule
+abs $2\alpha_{\max}$ & 41.45 & existing\\
+abs $2\alpha_{\mathrm{res}}$ & 42.46 & existing\\
+abs $2\alpha_{\sup}$ & 688.33 & existing\\
+\midrule
+Lower edge $L$ & 1.51 & $0\le L\le$ gap\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Takeaways.}
+\begin{itemize}
+\item All signed upper bounds are \emph{valid} everywhere
+($\min_s[U_\bullet(s)-\text{gap}(s)]\ge 0$ up to numerical tolerance
+$\sim10^{-13}$), and the ordering $U_{\max}\le U_{\mathrm{res}}\le U_{\sup}$ holds.
+\item The signed bound is \textbf{$\sim$15--20$\times$ tighter} than the
+absolute-value $2\alpha$ over the operating region ($U_{\mathrm{res}}=2.80$ vs.\
+$2\alpha_{\mathrm{res}}=42.46$, a $15.2\times$ reduction; $U_{\max}=2.06$ vs.\
+$2\alpha_{\max}=41.45$, a $20.1\times$ reduction).
+\item $U_{\max}=2.06$ essentially recovers the true gap $2.01$, and the
+no-true-$\pi^\star$ variant $U_{\mathrm{res}}=2.80$ stays within $40\%$ of it.
+\end{itemize}
+
+\begin{thebibliography}{1}
+\bibitem{ref1} B.~Bozkurt, A.~Mahajan, A.~Nayyar, and Y.~Ouyang, ``Model
+approximation in MDPs with unbounded per-step cost,'' \emph{IEEE Transactions on
+Automatic Control}, vol.~70, no.~7, pp.~4624--4639, 2025.
+\end{thebibliography}
+
+\end{document}
