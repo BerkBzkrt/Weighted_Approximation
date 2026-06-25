@@ -19,17 +19,25 @@ We study an inventory MDP under two models: a true model **M** and an approximat
 ├── bounds.py                  # Kappa computation, weighted-norm bounds, sample-path fixed-point bound
 ├── plots.py                   # Plotting utilities for zoomed-in/zoomed-out figures
 ├── tests.py                   # Sanity checks for models, solvers, and bounds
-├── computation_steps.pdf       # Rendered derivation of sample-path bounds
+├── data/                      # Generated data artifacts (e.g. policies_fh.csv)
+├── docs/
+│   ├── tex/                   # LaTeX derivations and computation-step sources
+│   ├── pdf/                   # Rendered derivations and papers
+│   └── notes/                 # Task specs and working notes
 ├── notebooks/
-│   └── Sample_Path_Bounds.ipynb     # Sample-path bound derivation and comparison
+│   ├── Sample_Path_Bounds.ipynb     # Sample-path bound derivation and comparison
+│   ├── Finite_Horizon_Bounds.ipynb  # Finite-horizon and signed sample-path bounds
+│   └── Paper_Figures.ipynb          # Figure reproduction
 └── figures/
     ├── fig1-fig5/             # Figures from the model approximation paper
-    └── comparison/            # Sample-path vs existing bound comparison plots
+    ├── comparison/            # Sample-path vs existing bound comparison plots
+    ├── finite_horizon/        # Finite-horizon and signed-bound figures
+    └── misc/                  # Miscellaneous figure exports
 ```
 
 ## Computation Steps
 
-`computation_steps.pdf` contains the full set of steps for computing the sample dependent bound.
+`docs/pdf/computation_steps.pdf` contains the full set of steps for computing the sample dependent bound.
 
 ## Sample-Path Bounds Notebook
 

@@ -1,0 +1,201 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+
+\newcommand{\Smax}{S_{\max}}
+\newcommand{\pistar}{\pi^\star}
+\newcommand{\pihatstar}{\hat\pi^\star}
+\newcommand{\Vstar}{V^\star}
+\newcommand{\Vhatstar}{\hat V^\star}
+\newcommand{\Vpihat}{V^{\pihatstar}}
+
+\title{Why $\gamma$ Appears in the Propagation Term of the MDP Corollary}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Setup}
+
+Consider two discounted-cost MDPs $M$ and $\hat M$ on the same state and
+action spaces with discount factor $\gamma \in (0,1)$.  The Bellman equation
+for the value function of a policy $\pi$ under model $M$ is
+\begin{equation}\label{eq:bellman}
+  V^\pi(s) = c_M(s, \pi(s)) + \gamma \sum_{s' \in \mathcal{S}} V^\pi(s')\, P_M(s' \mid s, \pi(s)).
+\end{equation}
+
+Let $\pihatstar$ denote the optimal policy of $\hat M$ and $\Vhatstar$ the
+optimal value function of $\hat M$.  We want to bound $\Vpihat(s) - \Vhatstar(s)$.
+
+\section{Derivation}
+
+\paragraph{Step 1: Bellman equations.}
+$\Vpihat$ satisfies the Bellman equation under the \emph{true} model $M$
+with the \emph{approximate} policy $\pihatstar$:
+\begin{equation}\label{eq:V-pihat}
+  \Vpihat(s) = c_M\bigl(s, \pihatstar(s)\bigr)
+  + \gamma \sum_{s'} \Vpihat(s')\, P_M\bigl(s' \mid s, \pihatstar(s)\bigr).
+\end{equation}
+
+$\Vhatstar$ satisfies the Bellman optimality equation under $\hat M$:
+\begin{equation}\label{eq:V-hat}
+  \Vhatstar(s) = \hat c\bigl(s, \pihatstar(s)\bigr)
+  + \gamma \sum_{s'} \Vhatstar(s')\, \hat P\bigl(s' \mid s, \pihatstar(s)\bigr),
+\end{equation}
+where equality holds because $\pihatstar$ is optimal for $\hat M$.
+
+\paragraph{Step 2: Take the difference.}
+Subtracting~\eqref{eq:V-hat} from~\eqref{eq:V-pihat}:
+\begin{equation}\label{eq:diff-raw}
+  \Vpihat(s) - \Vhatstar(s)
+  = \bigl[c_M(s, a) - \hat c(s, a)\bigr]
+  + \gamma \sum_{s'} \Vpihat(s')\, P_M(s' \mid s, a)
+  - \gamma \sum_{s'} \Vhatstar(s')\, \hat P(s' \mid s, a),
+\end{equation}
+where we write $a = \pihatstar(s)$ for brevity.
+
+\paragraph{Step 3: Add and subtract $\gamma \sum_{s'} \Vhatstar(s') P_M(s' \mid s, a)$.}
+This separates the future-value terms into a ``propagated error'' piece and
+a ``transition mismatch'' piece:
+\begin{align}
+  \Vpihat(s) - \Vhatstar(s)
+  &= \underbrace{\bigl[c_M(s,a) - \hat c(s,a)\bigr]}_{\text{cost mismatch}}
+  \notag \\[6pt]
+  &\quad + \gamma \sum_{s'}
+    \underbrace{\bigl[\Vpihat(s') - \Vhatstar(s')\bigr]}_{\text{error at next state}}\,
+    P_M(s' \mid s, a)
+  \label{eq:decomposed} \\[6pt]
+  &\quad + \gamma \biggl[
+    \sum_{s'} \Vhatstar(s')\, P_M(s' \mid s, a)
+    - \sum_{s'} \Vhatstar(s')\, \hat P(s' \mid s, a)
+  \biggr].
+  \notag
+\end{align}
+
+\paragraph{Step 4: Take absolute values and bound.}
+Taking absolute values on both sides:
+\begin{align}
+  \bigl|\Vpihat(s) - \Vhatstar(s)\bigr|
+  &\le \bigl|c_M(s,a) - \hat c(s,a)\bigr|
+  \notag \\[4pt]
+  &\quad + \gamma \sum_{s'} \bigl|\Vpihat(s') - \Vhatstar(s')\bigr|\, P_M(s' \mid s, a)
+  \label{eq:bound} \\[4pt]
+  &\quad + \gamma\, \biggl|
+    \sum_{s'} \Vhatstar(s')\, P_M(s' \mid s, a)
+    - \sum_{s'} \Vhatstar(s')\, \hat P(s' \mid s, a)
+  \biggr|.
+  \notag
+\end{align}
+
+\paragraph{Step 5: Identify the three terms.}
+Define:
+\begin{align*}
+  \varepsilon(s, a) &= \bigl|c_M(s,a) - \hat c(s,a)\bigr|,
+  \\[4pt]
+  \Delta(s, a) &= \biggl|
+    \sum_{s'} \Vhatstar(s')\, P_M(s' \mid s, a)
+    - \sum_{s'} \Vhatstar(s')\, \hat P(s' \mid s, a)
+  \biggr|.
+\end{align*}
+If $\alpha(s)$ is any function satisfying
+$\bigl|\Vpihat(s) - \Vhatstar(s)\bigr| \le \alpha(s)$ for all $s$, then
+\eqref{eq:bound} gives:
+\begin{equation}\label{eq:beta-final}
+  \boxed{%
+    \alpha(s)
+    \;\le\; \underbrace{\varepsilon(s,a)}_{\text{cost mismatch}}
+    \;+\; \underbrace{\gamma \sum_{s'} \alpha(s')\, P_M(s' \mid s, a)}_{\text{propagated future error}}
+    \;+\; \underbrace{\gamma\, \Delta(s,a)}_{\text{transition mismatch}}
+  }
+\end{equation}
+
+The right-hand side defines the error certificate:
+\begin{equation}\label{eq:beta-def}
+  \beta(s,a)
+  \;=\; \varepsilon(s,a)
+  + \gamma \sum_{s'} \alpha(s')\, P_M(s' \mid s, a)
+  + \gamma\,\Delta(s,a).
+\end{equation}
+
+\paragraph{Step 6: From $\beta$ to $\alpha$.}
+The bound~\eqref{eq:bound} holds for any action $a$.  In particular, it holds
+for $a = \pistar(s)$ (optimal in $M$) and $a = \pihatstar(s)$ (optimal in
+$\hat M$).  The suboptimality gap $\Vpihat(s) - \Vstar(s)$ can be written as:
+\begin{align*}
+  \Vpihat(s) - \Vstar(s)
+  &= \bigl[\Vpihat(s) - \Vhatstar(s)\bigr]
+   + \bigl[\Vhatstar(s) - \Vstar(s)\bigr].
+\end{align*}
+The first bracket involves the policy $\pihatstar$ (the approximate
+optimiser applied in the true model), and the second involves $\pistar$
+(the true optimiser compared to the approximate value).  The proof of
+Theorem~2 bounds these two brackets separately, each evaluated at its
+respective action, giving:
+\begin{equation}\label{eq:gap-two-actions}
+  \Vpihat(s) - \Vstar(s)
+  \;\le\; \beta\bigl(s,\, \pihatstar(s)\bigr) + \beta\bigl(s,\, \pistar(s)\bigr)
+  \;\le\; 2\,\alpha(s),
+\end{equation}
+where
+\begin{equation}\label{eq:alpha-max}
+  \boxed{%
+    \alpha_{\max}(s)
+    \;=\; \max\!\Big\{
+      \beta\bigl(s,\, \pistar(s)\bigr),\;\;
+      \beta\bigl(s,\, \pihatstar(s)\bigr)
+    \Big\}.
+  }
+\end{equation}
+This is the \textbf{tighter variant}: $\alpha$ only needs to dominate $\beta$
+at the two actions that actually appear in the gap decomposition, not at every
+action in $\mathcal{A}$.
+
+A \textbf{looser but simpler variant} maximises over all actions:
+\begin{equation}\label{eq:alpha-sup}
+  \alpha_{\sup}(s)
+  \;=\; \max_{a \in \mathcal{A}}\, \beta(s, a)
+  \;\ge\; \alpha_{\max}(s).
+\end{equation}
+
+Both define valid fixed-point equations.  The fixed-point iteration
+initialises $\alpha^0(s) = 0$ and updates:
+\[
+  \alpha^{k+1}(s) = \max_{a \in A(s)}\, \beta^k(s,a),
+\]
+where $A(s) = \{\pistar(s),\, \pihatstar(s)\}$ for $\alpha_{\max}$
+and $A(s) = \mathcal{A}$ for $\alpha_{\sup}$.
+
+\section{Why $\gamma$ appears}
+
+The $\gamma$ in front of $\sum_{s'} \alpha(s') P_M(s' \mid s, a)$ is
+inherited directly from the Bellman equation~\eqref{eq:bellman}.  In a
+discounted MDP, next-period values are multiplied by $\gamma$: an error of
+magnitude $\alpha(s')$ one step in the future contributes only
+$\gamma \cdot \alpha(s')$ to the current-period value.
+
+This is also why the fixed-point operator
+\[
+  (\mathcal{T}\alpha)(s)
+  = \max_a \bigl[
+    \varepsilon(s,a) + \gamma \textstyle\sum_{s'} \alpha(s') P_M(s'|s,a) + \gamma\,\Delta(s,a)
+  \bigr]
+\]
+is a $\gamma$-contraction in sup-norm: the only term that depends on $\alpha$
+is multiplied by $\gamma < 1$.
+
+\paragraph{Contrast with the finite-horizon theorem.}
+In the general finite-horizon result (Theorem~2 of the paper), costs are
+undiscounted and the recursion reads
+\[
+  \beta_t(h_t, a_t)
+  = \varepsilon_t(h_t, a_t)
+  + \int \alpha_{t+1}(h_{t+1})\, P(dh_{t+1} \mid h_t, a_t)
+  + \Delta_t(h_t, a_t).
+\]
+No $\gamma$ appears because there is no discounting.  When specialising to
+infinite-horizon discounted MDPs and taking the fixed-point limit ($T \to
+\infty$), the discount factor $\gamma$ from the Bellman operator emerges
+naturally in front of the propagation and transition-mismatch terms.
+
+\end{document}

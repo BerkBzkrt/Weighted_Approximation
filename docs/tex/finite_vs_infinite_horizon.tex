@@ -1,0 +1,413 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\newcommand{\Smax}{S_{\max}}
+\newcommand{\clip}{\operatorname{clip}}
+\newcommand{\pistar}{\pi^\star}
+\newcommand{\pihatstar}{\hat\pi^\star}
+\newcommand{\Vstar}{V^\star}
+\newcommand{\Vhatstar}{\hat V^\star}
+\newcommand{\Vpihat}{V^{\pihatstar}}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{remark}{Remark}
+\newtheorem{proposition}{Proposition}
+
+\title{Comparing the Finite-Horizon Sample-Path Bound\\with the Infinite-Horizon Model Approximation Bound:\\The Role of $\gamma$}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+%% ====================================================================
+\section{The Two Results to Compare}
+%% ====================================================================
+
+We compare two bounds on the suboptimality gap $\Vpihat(s) - \Vstar(s)$ for an
+infinite-horizon discounted MDP with discount factor $\gamma \in (0,1)$.
+
+\paragraph{Result A: Model approximation bound (Bozkurt et al., IEEE TAC 2025).}
+Derived \emph{directly} for infinite-horizon discounted MDPs.  With weight
+function $w$ and stability constant $\kappa$ satisfying $\gamma\kappa < 1$:
+\begin{equation}\label{eq:model-approx}
+  \frac{\Vpihat(s) - \Vstar(s)}{w(s)}
+  \;\le\;
+  \frac{1}{1 - \gamma\kappa}
+  \bigl[\mathcal{D}^{\pihatstar}(\Vhatstar)
+  + \mathcal{D}^\star(\Vhatstar)\bigr]
+  \qquad \forall\, s \in \mathcal{S},
+\end{equation}
+where $\mathcal{D}^{\pihatstar}$ and $\mathcal{D}^\star$ are Bellman mismatch
+functionals evaluated in the weighted norm.
+
+\paragraph{Result B: Sample-path dependent AIS bound (our paper).}
+Derived for \emph{finite-horizon} POMDPs, then specialised to MDPs.  The MDP
+corollary gives:
+\begin{equation}\label{eq:sample-path}
+  \Vpihat(s) - \Vstar(s) \;\le\; 2\,\alpha(s) \qquad \forall\, s \in \mathcal{S},
+\end{equation}
+where $\alpha$ is the fixed point of
+\begin{equation}\label{eq:beta-fp}
+  \beta(s,a)
+  = \varepsilon(s,a) + \gamma \sum_{s'} \alpha(s')\, P(s'|s,a) + \Delta(s,a),
+  \qquad
+  \alpha(s) = \max_{a \in \{\pistar(s),\, \pihatstar(s)\}} \beta(s,a).
+\end{equation}
+
+\medskip
+\noindent
+\textbf{Key question.}
+Result~A is stated for infinite horizon.  Result~B is proved for finite
+horizon.  On what grounds can we compare them on the same infinite-horizon MDP?
+And why does $\gamma$ appear so prominently in~\eqref{eq:model-approx}
+(via $\frac{1}{1-\gamma\kappa}$) but seem to have a different structural role
+in~\eqref{eq:beta-fp} (via $\gamma \sum_{s'} \alpha(s') P$)?
+
+%% ====================================================================
+\section{Why the Finite-Horizon Result Extends to Infinite Horizon}
+%% ====================================================================
+
+\subsection{The finite-horizon backward recursion}
+
+Theorem~2 of our paper is proved for a $T$-stage undiscounted problem.  The
+bound uses a backward recursion: with $\alpha_T(s) = 0$ (terminal condition)
+and for $t < T$,
+\begin{equation}\label{eq:finite-recursion}
+  \beta_t(s,a) = \varepsilon_t(s,a) + \sum_{s'} \alpha_{t+1}(s')\, P(s'|s,a) + \Delta_t(s,a),
+  \qquad
+  \alpha_t(s) = \max_{a \in \{\pistar_t(s),\, \pihatstar_t(s)\}} \beta_t(s,a),
+\end{equation}
+guaranteeing $\Vpihat_t(s) - \Vstar_t(s) \le 2\,\alpha_t(s)$ for all $t$ and $s$.
+
+\begin{remark}[No $\gamma$ in the finite-horizon version]
+The recursion~\eqref{eq:finite-recursion} has \textbf{no explicit $\gamma$}.
+The finite-horizon Bellman equation is $V_t(s) = c_t(s,a) + \sum_{s'} V_{t+1}(s')P(s'|s,a)$
+without discounting, so the propagation term is simply $\sum_{s'} \alpha_{t+1}(s')P(s'|s,a)$.
+\end{remark}
+
+\subsection{Specialising to discounted MDPs}
+
+An infinite-horizon discounted MDP with discount factor $\gamma$ has the
+Bellman equation
+\[
+  \Vstar(s) = \min_a \bigl[c(s,a) + \gamma \textstyle\sum_{s'} \Vstar(s') P(s'|s,a)\bigr].
+\]
+This can be viewed as a finite-horizon problem with $T$ stages where the
+one-step operator applies $\gamma$ to the continuation value:
+\begin{equation}\label{eq:bellman-T}
+  V_t(s) = \min_a \bigl[c(s,a) + \gamma \textstyle\sum_{s'} V_{t+1}(s') P(s'|s,a)\bigr],
+  \qquad V_T(s) = 0.
+\end{equation}
+Crucially, the models are \textbf{stationary}: the costs $c, \hat c$, transitions
+$P, \hat P$, and policies $\pistar, \pihatstar$ do not depend on~$t$.  When
+we apply the finite-horizon bound~\eqref{eq:finite-recursion} to this
+discounted system, two things change:
+
+\begin{enumerate}
+\item \textbf{The propagation term acquires $\gamma$.}
+Since the Bellman operator discounts the next stage by $\gamma$, the error
+propagation in the bound inherits the same discount:
+\begin{equation}\label{eq:gamma-propagation}
+  \beta_t(s,a)
+  = \varepsilon(s,a) + \gamma \sum_{s'} \alpha_{t+1}(s')\, P(s'|s,a) + \Delta(s,a).
+\end{equation}
+The factor $\gamma$ in front of $\sum_{s'} \alpha_{t+1}(s') P(s'|s,a)$ comes
+directly from the $\gamma$ in the discounted Bellman operator~\eqref{eq:bellman-T}.
+
+\item \textbf{The operator is time-invariant.}
+Because costs, transitions, and policies are stationary, the operator
+$\alpha \mapsto \mathcal{T}\alpha$ defined by
+\begin{equation}\label{eq:T-operator}
+  (\mathcal{T}\alpha)(s)
+  = \max_{a \in \{\pistar(s),\, \pihatstar(s)\}}
+    \bigl[\varepsilon(s,a) + \gamma \textstyle\sum_{s'} \alpha(s') P(s'|s,a) + \Delta(s,a)\bigr]
+\end{equation}
+is the \emph{same} at every time step.  The backward recursion becomes
+$\alpha_t = \mathcal{T}(\alpha_{t+1})$, starting from $\alpha_T = 0$.
+\end{enumerate}
+
+\subsection{Taking the limit $T \to \infty$}
+
+Three sequences converge as $T \to \infty$:
+
+\begin{enumerate}
+\item \textbf{The $\alpha$ sequence.}
+Since $\alpha_T = 0$ and $\alpha_t = \mathcal{T}(\alpha_{t+1})$, the backward
+recursion is equivalent to the forward iteration $\alpha^k = \mathcal{T}^k(\mathbf{0})$.
+The operator $\mathcal{T}$ is a $\gamma$-contraction (the only dependence on
+$\alpha$ is through $\gamma \sum_{s'} \alpha(s') P(s'|s,a)$, where $P$ is a
+probability distribution and $\gamma < 1$), so by Banach's fixed-point theorem,
+$\alpha^k \to \alpha^\star$ at rate $\gamma^k$.
+
+\item \textbf{The value functions.}
+The $T$-horizon optimal value $V^\star_T(s)$ and the policy value
+$V^{\pihatstar}_T(s)$ both converge to their infinite-horizon counterparts
+$\Vstar(s)$ and $\Vpihat(s)$, again by the $\gamma$-contraction of the
+Bellman operator.
+
+\item \textbf{The inequality is preserved.}
+For every $T$:
+\[
+  V^{\pihatstar}_T(s) - V^\star_T(s) \;\le\; 2\,\alpha_T(s).
+\]
+Since both sides converge (the left to $\Vpihat(s) - \Vstar(s)$, the right to
+$2\,\alpha^\star(s)$), the inequality passes to the limit:
+\[
+  \Vpihat(s) - \Vstar(s) \;\le\; 2\,\alpha^\star(s).
+\]
+\end{enumerate}
+
+\begin{remark}
+This is the same mechanism by which finite-horizon value iteration converges to
+the infinite-horizon value function.  The fixed-point iteration $\alpha^k =
+\mathcal{T}^k(\mathbf{0})$ is ``value iteration for the error bound.''
+\end{remark}
+
+%% ====================================================================
+\section{Where $\gamma$ Appears: A Structural Comparison}
+%% ====================================================================
+
+The discount factor $\gamma$ plays different structural roles in the two bounds.
+Understanding this difference is essential for interpreting the comparison.
+
+\subsection{Model approximation bound: $\gamma$ in the amplification factor}
+
+The Bellman mismatch functional for policy $\pi$ is
+\begin{equation}\label{eq:bellman-mismatch}
+  [\mathcal{B}^\pi \Vhatstar](s) - [\hat{\mathcal{B}}^\pi \Vhatstar](s)
+  = \underbrace{\bigl[c(s,\pi(s)) - \hat c(s,\pi(s))\bigr]}_{\text{cost mismatch}}
+  + \gamma \underbrace{\sum_{s'} \Vhatstar(s') \bigl[P(s'|s,\pi(s)) - \hat P(s'|s,\pi(s))\bigr]}_{\text{transition mismatch}}.
+\end{equation}
+This one-step mismatch naturally contains $\gamma$ in front of the transition
+difference.  The weighted norm of this mismatch gives $\mathcal{D}^\pi(\Vhatstar)$.
+
+The key step in the model approximation proof is bounding the infinite-horizon
+accumulation of this one-step error.  Under the stability condition
+$\mathbb{E}_\pi[w(s')] \le \kappa\, w(s)$, repeated application of the
+Bellman operator yields a geometric series:
+\begin{equation}\label{eq:geometric}
+  \frac{\Vpihat(s) - \Vstar(s)}{w(s)}
+  \;\le\; \sum_{k=0}^{\infty} (\gamma\kappa)^k \cdot \text{(one-step mismatch)}
+  \;=\; \frac{1}{1 - \gamma\kappa} \cdot \text{(one-step mismatch)}.
+\end{equation}
+
+\textbf{Summary}: $\gamma$ appears in \textbf{two} places:
+\begin{itemize}
+  \item \textbf{Inside} $\mathcal{D}$: the Bellman mismatch~\eqref{eq:bellman-mismatch}
+        has $\gamma$ multiplying the transition difference, because the Bellman
+        operator is $\mathcal{B}^\pi v = c_\pi + \gamma P_\pi v$.
+  \item \textbf{In the amplification factor} $\frac{1}{1-\gamma\kappa}$:
+        a worst-case geometric bound on how the one-step mismatch accumulates
+        over infinitely many future steps.
+\end{itemize}
+
+\subsection{Sample-path bound: $\gamma$ in the error propagation}
+
+The fixed-point equation is
+\begin{equation}\label{eq:fp-again}
+  \alpha(s)
+  = \varepsilon(s)
+  + \gamma \sum_{s'} \alpha(s')\, P(s'|s,a^\star(s))
+  + \Delta(s),
+\end{equation}
+where
+\begin{align}
+  \varepsilon(s) &= |c(s,a) - \hat c(s,a)|, \label{eq:eps} \\
+  \Delta(s,a) &= \bigl|\textstyle\sum_{s'} \Vhatstar(s') P(s'|s,a) - \textstyle\sum_{s'} \Vhatstar(s') \hat P(s'|s,a)\bigr|. \label{eq:Delta}
+\end{align}
+
+\textbf{Key observation:} $\gamma$ appears in \textbf{one} place only ---
+the propagation term $\gamma \sum_{s'} \alpha(s') P(s'|s,a)$.
+
+There is \textbf{no} $\gamma$ in front of $\Delta(s,a)$, even though the
+Bellman mismatch~\eqref{eq:bellman-mismatch} has $\gamma$ multiplying the
+transition difference.  There is also no $\frac{1}{1-\gamma\kappa}$ amplification
+factor.  So where did $\gamma$ go?
+
+\subsection{The propagation term replaces $\frac{1}{1-\gamma\kappa}$}
+
+The answer is that the error propagation term $\gamma \sum_{s'} \alpha(s') P(s'|s,a)$
+\textbf{is} the infinite-horizon accumulation mechanism --- it replaces the
+$\frac{1}{1-\gamma\kappa}$ geometric series entirely.
+
+To see this, unroll the fixed-point equation~\eqref{eq:fp-again}.  Let
+$e(s) = \varepsilon(s) + \Delta(s)$ denote the total one-step error at state
+$s$.  Then:
+\begin{align}
+  \alpha(s)
+  &= e(s) + \gamma \sum_{s_1} P(s_1|s) \,\alpha(s_1) \nonumber \\
+  &= e(s) + \gamma \sum_{s_1} P(s_1|s)
+     \bigl[e(s_1) + \gamma \sum_{s_2} P(s_2|s_1)\, \alpha(s_2)\bigr] \nonumber \\
+  &= e(s) + \gamma \sum_{s_1} P(s_1|s)\, e(s_1)
+     + \gamma^2 \sum_{s_1, s_2} P(s_1|s) P(s_2|s_1)\, \alpha(s_2) \nonumber \\
+  &\;\;\vdots \nonumber \\
+  &= \sum_{k=0}^{\infty} \gamma^k
+     \,\mathbb{E}\bigl[e(S_k) \;\big|\; S_0 = s\bigr], \label{eq:unrolled}
+\end{align}
+where $S_0 = s,\, S_1,\, S_2, \ldots$ is the Markov chain under the true
+model's dynamics with the relevant policy.
+
+\medskip
+
+\noindent
+Compare this with the model approximation bound.  Writing $\bar{e} = \max_s e(s)/w(s)$
+for the worst-case one-step error normalised by the weight function:
+\begin{equation}\label{eq:model-approx-unrolled}
+  \frac{\text{model approx bound}(s)}{w(s)}
+  = \frac{\bar{e}}{1 - \gamma\kappa}
+  = \bar{e} \sum_{k=0}^{\infty} (\gamma\kappa)^k.
+\end{equation}
+
+The structural parallel is now clear:
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+& Model approximation & Sample-path \\
+\midrule
+One-step error & $\bar{e}$ (worst-case, normalized) & $e(s)$ (state-dependent) \\
+Accumulation & $\displaystyle\sum_{k=0}^{\infty} (\gamma\kappa)^k = \frac{1}{1-\gamma\kappa}$
+  & $\displaystyle\sum_{k=0}^{\infty} \gamma^k \mathbb{E}[e(S_k) | S_0 = s]$ \\[10pt]
+Discounting & $\gamma\kappa$ per step & $\gamma$ per step \\
+Dynamics & Worst-case (via $\kappa$) & Exact (via $P$) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Why no $\gamma$ in front of $\Delta$?}
+
+In the Bellman mismatch~\eqref{eq:bellman-mismatch}, the transition difference
+is multiplied by $\gamma$:
+\[
+  \text{Bellman mismatch}
+  = \varepsilon(s) + \gamma \bigl|\textstyle\sum_{s'} \Vhatstar(s') [P(s'|s,a) - \hat P(s'|s,a)]\bigr|
+  = \varepsilon(s) + \gamma\,\Delta(s,a).
+\]
+Yet the sample-path bound writes $\beta = \varepsilon + \gamma\sum_{s'}\alpha(s')P + \Delta$,
+with no $\gamma$ on $\Delta$.
+
+This comes from the finite-horizon derivation.
+In the finite-horizon Theorem~2, the transition mismatch $\Delta_t$
+bounds the discrepancy in how the two models evaluate
+$\hat{V}_{t+1}$ at the next time step.  For the discounted
+MDP Bellman equation~\eqref{eq:bellman-T}, the ``next-step value'' that
+appears is $\gamma \hat{V}_{t+1}$, so the actual
+mismatch that needs bounding is
+\[
+  \gamma \left|\sum_{s'} \hat{V}_{t+1}(s') P(s'|s,a) - \sum_{s'} \hat{V}_{t+1}(s') \hat{P}(s'|s,a)\right|
+  = \gamma \,\Delta(s,a).
+\]
+Using $\Delta(s,a) \ge \gamma\,\Delta(s,a)$ (since $\gamma \le 1$) gives a valid
+but slightly conservative bound.  The conservatism is at most a factor of
+$1/\gamma$ on the $\Delta$ term alone, and in practice negligible compared to
+the tightness gained from state-dependent error tracking.
+
+An alternative formulation could use $\gamma\,\Delta$ in~\eqref{eq:fp-again},
+yielding an even tighter bound.  In the implementation, $\Delta$ is
+computed without the $\gamma$ factor (\texttt{bounds.py}, line~107:
+\texttt{H\_delta = np.abs(H\_M - H\_Mh)}), matching the MDP corollary as
+stated.
+
+%% ====================================================================
+\section{Why the Sample-Path Propagation is Tighter}
+%% ====================================================================
+
+The model approximation bound replaces the exact future-error sum
+$\sum_{k=0}^\infty \gamma^k \mathbb{E}[e(S_k)|S_0=s]$ with an upper bound:
+\[
+  \sum_{k=0}^{\infty} \gamma^k \mathbb{E}[e(S_k)|S_0=s]
+  \;\le\;
+  \sum_{k=0}^{\infty} (\gamma\kappa)^k \cdot \bar{e} \cdot w(s)
+  \;=\; \frac{\bar{e}\, w(s)}{1-\gamma\kappa}.
+\]
+This upper bound introduces \textbf{two} sources of conservatism:
+
+\begin{enumerate}
+\item \textbf{Worst-case one-step error.}
+The model approximation takes $\bar{e} = \max_s e(s)/w(s)$, replacing the
+state-dependent $e(s)$ with its worst case.  For the inventory example, $e(s)$
+is small near the origin (where the system operates) but large at extreme
+states.  A single worst-case constant is driven by extreme states.
+
+\item \textbf{Stability amplification.}
+The factor $\kappa \ge 1$ in $(\gamma\kappa)^k$ accounts for the possibility
+that the weight function $w$ grows along trajectories.  This replaces the exact
+expectation $\mathbb{E}[e(S_k)|S_0=s]$ with the bound
+$\kappa^k \cdot \bar{e} \cdot w(s)$.  Even when the Markov chain quickly
+concentrates in a small region (as inventory systems do), the $\kappa^k$ factor
+still assumes worst-case growth at every step.
+\end{enumerate}
+
+The sample-path bound avoids both: it computes the \emph{exact} discounted sum
+$\sum_k \gamma^k \mathbb{E}[e(S_k)|S_0=s]$ via the fixed-point iteration,
+using the actual transition probabilities $P(s'|s,a)$ and the state-dependent
+errors $e(s)$.
+
+\medskip
+
+\noindent
+In matrix notation, writing $\mathbf{e}$ for the vector of one-step errors and
+$P_\pi$ for the transition matrix under the relevant policy:
+\begin{align}
+  \text{sample-path bound:} \qquad
+  \boldsymbol{\alpha} &= (I - \gamma P_\pi)^{-1}\, \mathbf{e}
+  \;=\; \sum_{k=0}^{\infty} \gamma^k P_\pi^k\, \mathbf{e}, \label{eq:resolvent} \\[4pt]
+  \text{model approx bound:} \qquad
+  \text{bound}(s) &= \frac{\bar{e}}{1-\gamma\kappa} \cdot w(s)
+  \;\ge\; \bigl[(I - \gamma P_\pi)^{-1}\, \mathbf{e}\bigr](s). \label{eq:model-approx-matrix}
+\end{align}
+The resolvent $(I - \gamma P_\pi)^{-1}$ in~\eqref{eq:resolvent} is the exact
+operator that maps one-step errors to infinite-horizon accumulated errors.  The
+model approximation bound~\eqref{eq:model-approx-matrix} upper-bounds this
+resolvent using the Lyapunov stability condition $P_\pi w \le \kappa\, w$.
+
+%% ====================================================================
+\section{Summary: The Role of $\gamma$ in Each Bound}
+%% ====================================================================
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{p{3.5cm}p{5.5cm}p{5.5cm}}
+\toprule
+& \textbf{Model approx bound} & \textbf{Sample-path bound} \\
+\midrule
+Horizon
+  & Derived directly for infinite horizon
+  & Derived for finite horizon; infinite-horizon obtained as $T \to \infty$ fixed point \\
+$\gamma$ in one-step error
+  & Yes: $\mathcal{D} \ni \gamma \cdot (\text{transition diff})$
+  & No: $\Delta$ defined without $\gamma$ (slightly conservative) \\
+$\gamma$ in accumulation
+  & $\dfrac{1}{1-\gamma\kappa}$: worst-case geometric series
+  & $\gamma \sum_{s'} \alpha(s') P(s'|s,a)$: exact discounted propagation through true dynamics \\
+Accumulation mechanism
+  & Closed-form $\dfrac{1}{1-\gamma\kappa}$
+  & Fixed-point iteration resolving $(I - \gamma P)^{-1} \mathbf{e}$ \\
+Why $\gamma\kappa < 1$ needed
+  & Ensures the geometric series $\sum_k (\gamma\kappa)^k$ converges
+  & Not needed; contraction follows from $\gamma < 1$ alone (no $\kappa$) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\bigskip
+The comparison of the two bounds on the same infinite-horizon MDP is valid
+because:
+\begin{enumerate}
+  \item Both bound the same quantity: $\Vpihat(s) - \Vstar(s)$ for the
+        infinite-horizon discounted problem.
+  \item The sample-path bound's fixed-point iteration is the $T \to \infty$
+        limit of the finite-horizon backward recursion, with convergence
+        guaranteed by the $\gamma$-contraction.
+  \item The $\gamma$ that appears in $\frac{1}{1-\gamma\kappa}$ and the
+        $\gamma$ that appears in $\gamma \sum_{s'} \alpha(s') P(s'|s,a)$ serve
+        the same fundamental purpose --- discounting future errors --- but the
+        sample-path version does so with the exact dynamics rather than a
+        worst-case Lyapunov bound.
+\end{enumerate}
+
+\end{document}

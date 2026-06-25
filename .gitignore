@@ -146,8 +146,12 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Internal docs and derivations (kept locally in docs/)
-docs/
+# Internal docs and derivations (kept locally in docs/);
+# the tex/pdf/notes subfolders are published.
+docs/*
+!docs/tex/
+!docs/pdf/
+!docs/notes/
 
 # Bug comparison scripts and figures (kept locally in scripts/)
 scripts/

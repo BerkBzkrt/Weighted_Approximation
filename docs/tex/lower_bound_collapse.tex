@@ -1,0 +1,285 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{hyperref}
+
+\newcommand{\Vhat}{\hat V}
+\newcommand{\Qhat}{\hat Q}
+\newcommand{\pihat}{\hat\pi}
+\newcommand{\PY}{P_{Y,t}}
+\newcommand{\E}{\mathbb{E}}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+
+\title{Why the Extended Theorem 3 lower bound\\ collapses to the trivial $V^{\pihat^\star}-V^\star\ge 0$}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Extended Theorem~3 is two-sided: it states both an upper bound (Eq.~21) and a
+symmetric lower bound (Eq.~27) on the sub-optimality gap
+$V^{\pihat^\star}_t-V^\star_t$. The upper bound is informative and computable
+without the true optimal policy. The lower bound, however, when instantiated
+\emph{within the framework} (i.e.\ without re-introducing the true model's optimal
+value $V^\star$ or policy $\pi^\star$), can only certify the trivial statement
+$V^{\pihat^\star}_t-V^\star_t\ge 0$. This note explains \emph{why}, with the key
+asymmetry isolated in one place.
+\end{abstract}
+
+\section{Notation and the two error streams}
+We compare a \emph{true} model with optimal value/policy $(V^\star,\pi^\star)$ and
+an \emph{approximate} (AIS) model with optimal value/policy
+$(\Vhat^\star,\pihat^\star)$. The policy actually deployed is the AIS-optimal
+policy lifted to the true system, $\pi_t(h_t)=\pihat^\star_t(\sigma_t(h_t))$, whose
+true value is $V^{\pihat^\star}_t$. Theorem~3 tracks \emph{two signed error
+streams}, both measured against the shared baseline $\Vhat^\star$:
+\begin{align}
+\alpha^{\pihat^\star}_t(h_t) &= V^{\pihat^\star}_t(h_t)-\Vhat^\star_t(\sigma_t(h_t))
+&&\text{(policy-evaluation stream),}\\
+\alpha^{\star}_t(h_t) &= V^{\star}_t(h_t)-\Vhat^\star_t(\sigma_t(h_t))
+&&\text{(optimality stream).}
+\end{align}
+Subtracting the two cancels the baseline and returns exactly the quantity we care
+about,
+\begin{equation}
+\alpha^{\pihat^\star}_t(h_t)-\alpha^{\star}_t(h_t)
+= V^{\pihat^\star}_t(h_t)-V^{\star}_t(h_t),
+\label{eq:bridge}
+\end{equation}
+the ``bridge identity.'' Each stream has a state--action ($Q$-like) companion,
+\begin{equation}
+\beta^{\pihat^\star}_t(h_t,a_t)=Q^{\pihat^\star}_t(h_t,a_t)-\Qhat^\star_t(\sigma_t(h_t),a_t),
+\qquad
+\beta^{\star}_t(h_t,a_t)=Q^{\star}_t(h_t,a_t)-\Qhat^\star_t(\sigma_t(h_t),a_t).
+\end{equation}
+The single one-step mismatch shared by both streams is
+\begin{equation}
+\Delta_t(h_t,a_t)=
+\Bigl[c_t(h_t,a_t)+\textstyle\int \Vhat^\star_{t+1}\,dP^\sigma_t\Bigr]
+-\Bigl[\hat c_t(\sigma_t(h_t),a_t)+\textstyle\int \Vhat^\star_{t+1}\,d\hat P^\sigma_t\Bigr],
+\label{eq:delta}
+\end{equation}
+i.e.\ the cost-plus-kernel mismatch evaluated on the \emph{same} baseline
+$\Vhat^\star_{t+1}$, propagated by the two models' kernels. Crucially, both streams
+use the \emph{same} $\Delta_t$: because $\pihat^\star$ is AIS-optimal we have
+$\Vhat^{\pihat^\star}=\Vhat^\star$, so the policy-evaluation mismatch coincides
+with the optimality mismatch.
+
+\section{Sub-solutions and super-solutions}
+The exact streams obey one-step recursions (Lemmas~1--2). For example the
+\emph{exact} optimality stream $\tilde\alpha^\star_t=V^\star_t-\Vhat^\star_t$
+satisfies
+\begin{equation}
+\tilde\beta^\star_t(h_t,a_t)=\Delta_t(h_t,a_t)+\int \tilde\alpha^\star_{t+1}\,d\PY ,
+\label{eq:exactrec}
+\end{equation}
+and an analogous equality holds for the policy-evaluation stream. A
+\emph{certificate} replaces these equalities with one-sided inequalities. Two
+directions are possible.
+
+\begin{definition}[Super-solution]
+A function is a \emph{super-solution} if it sits \textbf{above} the exact stream,
+$\alpha_t\ge\tilde\alpha_t$, and is produced by turning the exact recursion into a
+``$\ge$'': $\beta_t\ge\Delta_t+\int\alpha_{t+1}\,d\PY$. A super-solution
+\emph{over-estimates} the error.
+\end{definition}
+
+\begin{definition}[Sub-solution]
+A function is a \emph{sub-solution} if it sits \textbf{below} the exact stream,
+$\alpha_t\le\tilde\alpha_t$, and is produced by turning the exact recursion into a
+``$\le$'': $\beta_t\le\Delta_t+\int\alpha_{t+1}\,d\PY$. A sub-solution
+\emph{under-estimates} the error.
+\end{definition}
+
+\paragraph{Why the directions matter.} From the bridge identity
+\eqref{eq:bridge}, $V^{\pihat^\star}_t-V^\star_t=\tilde\alpha^{\pihat^\star}_t-\tilde\alpha^\star_t$.
+To get a \emph{valid} bound we replace each exact stream by a certificate that
+pushes the difference the right way:
+\begin{itemize}
+\item \textbf{Upper bound:} make the first term larger and the second smaller, i.e.\
+use a super-solution for $\alpha^{\pihat^\star}$ and a sub-solution for
+$\alpha^\star$. Then
+$V^{\pihat^\star}_t-V^\star_t=\tilde\alpha^{\pihat^\star}_t-\tilde\alpha^\star_t
+\le \alpha^{\pihat^\star}_t-\alpha^\star_t$.
+\item \textbf{Lower bound:} the reverse---use a sub-solution for
+$\alpha^{\pihat^\star}$ and a super-solution for $\alpha^\star$. Then
+$V^{\pihat^\star}_t-V^\star_t\ge \alpha^{\pihat^\star}_t-\alpha^\star_t$.
+\end{itemize}
+
+\paragraph{The anchoring action.} A recursion is only closed once we say at
+\emph{which action} $\beta_t(h_t,\cdot)$ is evaluated to form $\alpha_t(h_t)$. This
+``anchor'' is where all the freedom---and all the trouble---lives.
+
+\section{The lower-bound hypotheses of Theorem 3}
+For the lower bound, Theorem~3 asks for candidate functions satisfying, for all
+$t$,
+\begin{align}
+\beta^{\pihat^\star}_T \le \Delta_T \le \beta^\star_T, &&\text{(terminal, Eq.~22)}\label{eq:T}\\
+\beta^{\pihat^\star}_t(h_t,a_t) \le \Delta_t(h_t,a_t)+\int \alpha^{\pihat^\star}_{t+1}\,d\PY,
+&&\text{(sub-solution recursion, Eq.~23)}\label{eq:23}\\
+\beta^{\star}_t(h_t,a_t) \ge \Delta_t(h_t,a_t)+\int \alpha^{\star}_{t+1}\,d\PY,
+&&\text{(super-solution recursion, Eq.~24)}\label{eq:24}\\
+\alpha^{\pihat^\star}_t(h_t) \le \beta^{\pihat^\star}_t\bigl(h_t,\pihat^\star_t(\sigma_t(h_t))\bigr),
+&&\text{(anchor at $\pihat^\star$, Eq.~25)}\label{eq:25}\\
+\alpha^{\star}_t(h_t) \ge \beta^{\star}_t\bigl(h_t,\pihat^\star_t(\sigma_t(h_t))\bigr).
+&&\text{(anchor at $\pihat^\star$, Eq.~26)}\label{eq:26}
+\end{align}
+The conclusion is the lower bound
+\begin{equation}
+V^{\pihat^\star}_t(h_t)-V^\star_t(h_t)\ \ge\ \alpha^{\pihat^\star}_t(h_t)-\alpha^{\star}_t(h_t).
+\tag{27}\label{eq:27}
+\end{equation}
+
+\section{The collapse}
+We want the \emph{tightest} (largest, hence most informative) admissible value of
+$\alpha^{\pihat^\star}_t-\alpha^\star_t$. Maximize each piece subject to its
+constraints.
+
+\paragraph{Largest admissible $\alpha^{\pihat^\star}_t$.} Chaining \eqref{eq:25}
+then \eqref{eq:23} (both at the anchor $\pihat^\star$) gives the upper envelope
+\begin{equation}
+\alpha^{\pihat^\star}_t(h_t)\ \le\ \Delta_t\bigl(h_t,\pihat^\star\bigr)+\int \alpha^{\pihat^\star}_{t+1}\,d\PY,
+\label{eq:rec_ph}
+\end{equation}
+so the largest admissible choice attains equality in \eqref{eq:rec_ph}.
+
+\paragraph{Smallest admissible $\alpha^{\star}_t$.} Chaining \eqref{eq:26} then
+\eqref{eq:24} (again at the anchor $\pihat^\star$) gives the lower envelope
+\begin{equation}
+\alpha^{\star}_t(h_t)\ \ge\ \Delta_t\bigl(h_t,\pihat^\star\bigr)+\int \alpha^{\star}_{t+1}\,d\PY,
+\label{eq:rec_star}
+\end{equation}
+so the smallest admissible choice attains equality in \eqref{eq:rec_star}.
+
+\paragraph{They are the same recursion.} Compare \eqref{eq:rec_ph} and
+\eqref{eq:rec_star} at equality. They have
+\begin{itemize}
+\item the \textbf{same anchor action} $\pihat^\star_t(\sigma_t(h_t))$ (forced by
+\eqref{eq:25} and \eqref{eq:26});
+\item the \textbf{same mismatch} $\Delta_t$ (one shared object, \eqref{eq:delta});
+\item the \textbf{same kernel} $\PY$ in the propagation;
+\item the \textbf{same terminal value}: \eqref{eq:T} squeezes both
+$\beta^{\pihat^\star}_T$ and $\beta^\star_T$ to $\Delta_T$, hence both
+$\alpha^{\pihat^\star}_T=\alpha^\star_T=\Delta_T$.
+\end{itemize}
+A backward induction now gives, for every $t$,
+\begin{equation}
+\alpha^{\pihat^\star}_t(h_t)\ \equiv\ \alpha^{\star}_t(h_t)
+\qquad\Longrightarrow\qquad
+\alpha^{\pihat^\star}_t-\alpha^{\star}_t = 0 .
+\end{equation}
+\emph{Induction.} At $t=T$ both equal $\Delta_T$. If they coincide at $t+1$, then
+the integrals $\int\alpha^{\pihat^\star}_{t+1}\,d\PY$ and
+$\int\alpha^{\star}_{t+1}\,d\PY$ are equal, and since the remaining terms
+($\Delta_t$ at the same anchor) are identical, \eqref{eq:rec_ph} and
+\eqref{eq:rec_star} return the same value at $t$. Hence the best lower bound
+Theorem~3 yields in-framework is the trivial
+\[
+V^{\pihat^\star}_t-V^\star_t\ \ge\ 0 .
+\]
+
+\section{Why---in one sentence}
+The optimality stream $\alpha^\star=V^\star-\Vhat^\star$ involves the \emph{true}
+optimal value $V^\star$, which the framework never computes. Its only handle on the
+true system is the single policy it knows, $\pihat^\star$. Equation~\eqref{eq:26}
+forces the optimality super-solution to be anchored at $\pihat^\star$---but
+evaluating the true model at $\pihat^\star$ yields $V^{\pihat^\star}$, \emph{not}
+$V^\star$. That is precisely the policy-evaluation stream. So the smallest
+super-solution the theorem permits is dragged all the way up to
+$\alpha^{\pihat^\star}$; it overshoots the real $\tilde\alpha^\star$ by exactly the
+gap, and in the difference the two streams cancel.
+
+\section{Contrast: why the upper bound does \emph{not} collapse}
+The upper bound changes \textbf{one thing}: the anchor of the optimality stream.
+Its hypothesis (Eq.~20) is
+\begin{equation}
+\alpha^{\star}_t(h_t)\ \le\ \beta^{\star}_t\bigl(h_t,\pi^\star_t(h_t)\bigr),
+\tag{20}
+\end{equation}
+anchored at the \emph{true} optimal action $\pi^\star$, not $\pihat^\star$. Because
+this is a \emph{sub}-solution requirement ($\le$), it is realizable by a
+\textbf{minimization}
+\begin{equation}
+\alpha^{\star}_t(h_t)=\min_{a\in\mathcal C(h_t)}\Bigl[\Delta_t(h_t,a)+\int \alpha^{\star}_{t+1}\,d\PY\Bigr],
+\qquad \pi^\star_t(h_t)\in\mathcal C(h_t),
+\end{equation}
+over a candidate set $\mathcal C$ guaranteed to \emph{contain} $\pi^\star$. Taking a
+min over a set containing $\pi^\star$ automatically gives
+$\alpha^\star_t\le\beta^\star_t(h_t,\pi^\star)$ \emph{without ever identifying
+$\pi^\star$ exactly} (e.g.\ $\mathcal C=$ all actions, or a small base-stock set).
+That minimizing action is generally \emph{different} from---and cheaper
+than---$\pihat^\star$, so the optimality stream genuinely separates from the
+policy-evaluation stream and
+\[
+U_t=\alpha^{\pihat^\star}_t-\alpha^{\star}_t\ >\ 0 .
+\]
+
+\paragraph{The asymmetry, summarized.}
+\begin{center}
+\begin{tabular}{lll}
+\hline
+ & optimality stream role & anchor \\
+\hline
+Upper bound (Eq.~21) & sub-solution ($\le$, realizable by $\min$) & true $\pi^\star$ (via $\mathcal C\ni\pi^\star$) \\
+Lower bound (Eq.~27) & super-solution ($\ge$) & forced to $\pihat^\star$ (Eq.~26) \\
+\hline
+\end{tabular}
+\end{center}
+A \emph{sub}-solution can be anchored at the unknown $\pi^\star$ through a min over
+a candidate set---computable, and producing a real gap. A \emph{super}-solution
+(Eq.~26) is pinned to the \emph{same} anchor $\pihat^\star$ as policy evaluation, so
+it carries no information beyond it, and the certified lower bound is $0$.
+
+\paragraph{Consequence.} A \emph{non-trivial} lower bound on the gap requires
+information outside Extended Theorem~3---either the true optimal policy $\pi^\star$,
+or an out-of-framework advantage term such as
+$V^{\pihat^\star}_1-Q^\star_1(s,\pihat^\star(s))$ that explicitly uses the true
+$V^\star$. Within Theorem~3 alone, only the upper certificate $U$ is informative.
+
+\section{The distinction at a glance: which policy each computation uses}
+Both bounds begin from the same bridge identity~\eqref{eq:bridge},
+\[
+V^{\pihat^\star}_t-V^\star_t=\tilde\alpha^{\pihat^\star}_t-\tilde\alpha^\star_t,
+\]
+and both reuse the \emph{identical} policy-evaluation stream
+$\alpha^{\pihat^\star}$, anchored at the deployed policy $\pihat^\star$. They differ
+in exactly one decision---\textbf{which policy anchors the optimality stream}
+$\alpha^\star$---and that single choice decides whether the certificate is
+informative or empty.
+\begin{center}
+\begin{tabular}{lccc}
+\hline
+computation & optimality-stream anchor & policy it compares $\pihat^\star$ against & value \\
+\hline
+upper $U_t$ & $\pi^\star$\, (via $\min_{a\in\mathcal C}$, $\mathcal C\ni\pi^\star$) & the \emph{true optimal} $\pi^\star\neq\pihat^\star$ & $>0$ \\
+lower $L_t$ & $\pihat^\star$\, (forced by Eq.~\eqref{eq:26}) & $\pihat^\star$ \emph{itself} & $=0$ \\
+\hline
+\end{tabular}
+\end{center}
+
+\paragraph{Upper bound is nonzero.} The optimality sub-solution is evaluated at the
+\emph{true optimal} action $\pi^\star$ (reached implicitly by minimizing over a
+candidate set that contains it). Since $\pi^\star\neq\pihat^\star$ at the states
+that matter, the two streams track value functions of \emph{two different
+policies}; their difference is the genuine sub-optimality gap, so
+$U_t=\alpha^{\pihat^\star}_t-\alpha^\star_t>0$.
+
+\paragraph{Lower bound is zero.} The optimality super-solution is pinned by
+Eq.~\eqref{eq:26} to $\pihat^\star$---the \emph{same} policy the evaluation stream
+already uses. With one shared policy, one shared mismatch $\Delta_t$, one shared
+kernel, and one shared terminal, the two streams reconstruct the \emph{same}
+recursion and cancel pointwise, leaving the empty statement $L_t\equiv 0$.
+
+\paragraph{Numerical confirmation.} In the inventory experiment
+($T=100$, $\gamma=0.75$, base-stocks $\sigma^\star=2$, $\hat\sigma^\star=3$) the
+companion notebook computes the $\pihat^\star$-anchored optimality super-solution as
+an \emph{independent} backward recursion and finds it bit-exactly equal to
+$\alpha^{\pihat^\star}$ at every $(t,s)$, so $L(s)\equiv 0$. The upper certificate,
+whose optimality stream instead reaches $\pi^\star$, is strictly positive over the
+operating region $s\in[-7,3]$: $U_{\max}=2.06$ and $U_{\mathrm{res}}=2.80$ (true
+gap $2.01$). The two outcomes differ \emph{only} because of the anchoring policy.
+
+\end{document}

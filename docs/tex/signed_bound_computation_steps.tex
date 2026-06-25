@@ -11,7 +11,7 @@
 \newcommand{\pihat}{\hat\pi}
 
 \title{Computation steps for the \emph{signed} sample-path bound\\
-(Extended Theorems 3 and 4) for the inventory control example in [1]}
+(Extended Theorem 3) for the inventory control example in [1]}
 \date{\today}
 
 \begin{document}
@@ -44,14 +44,18 @@ $\hat\sigma^\star=3$. We work over horizon $T=100$ and report at $t=1$.
 
 \paragraph{Goal.}
 The absolute-value note certifies $|V^{\pihat^\star}-V^\star|\le 2\alpha$. Here we
-compute the \emph{signed} bound, which keeps the sign of every mismatch and is
-substantially tighter:
+compute the \emph{signed} bound of Extended Theorem~3, which keeps the sign of
+every mismatch and is substantially tighter. Theorem~3 (Eq.~21) certifies the
+upper bound
 \begin{equation}
-V^{\pihat^\star}(s)-V^\star(s)\ \le\ U(s)
-\qquad\text{and}\qquad
-V^{\pihat^\star}(s)-V^\star(s)\ \ge\ L(s).
+V^{\pihat^\star}_t(h_t)-V^\star_t(h_t)\ \le\
+\alpha^{\pihat^\star}_t(h_t)-\alpha^{\star}_t(h_t),
 \label{eq:goal}
 \end{equation}
+with the symmetric lower bound (Eq.~27) sharing the same two streams. As shown in
+\S\ref{sec:lower}, the lower bound computed entirely within the framework
+collapses to the trivial $V^{\pihat^\star}-V^\star\ge 0$, so the informative
+certificate is the upper bound $U$.
 
 \section{Key Idea: Two Signed Streams Sharing the Baseline $\Vhat^\star$}
 Instead of a single non-negative $\alpha$, we track \emph{two signed} error
@@ -89,8 +93,7 @@ All obtained by backward induction on the two models:
 policy-evaluation stream;
 \item $\pi^\star_t(s)$ for all $s,t$ (optimal policy of $M$) --- needed only for the
 $U_{\max}$ variant;
-\item $V^{\pihat^\star}_t(s)$ (true-model value of $\pihat^\star$), for validation
-and the lower edge;
+\item $V^{\pihat^\star}_t(s)$ (true-model value of $\pihat^\star$), for validation;
 \item demand PMFs $W_M[w],W_{\hat M}[w]$, $w=0,\dots,n$.
 \end{enumerate}
 
@@ -181,25 +184,31 @@ $\alpha^\star_{\max}\ge\alpha^\star_{\mathrm{res}}\ge\alpha^\star_{\sup}$, givin
 the same ordering as the absolute-value bound:
 $U_{\max}\le U_{\mathrm{res}}\le U_{\sup}$.
 
-\section{Lower Edge (Extended Theorem 4, Eq.~34)}
-The in-framework computable lower bound collapses to the trivial
-$V^{\pihat^\star}-V^\star\ge 0$ (the optimality super-solution anchored at
-$\pihat^\star$ coincides with the policy-evaluation stream). A \emph{non-trivial}
-lower edge uses the true-model advantage of $\pihat^\star$:
+\section{Lower Bound (Extended Theorem 3, Eq.~27)}\label{sec:lower}
+Theorem~3 also states the symmetric lower bound
+$V^{\pihat^\star}_t-V^\star_t\ge\alpha^{\pihat^\star}_t-\alpha^\star_t$ (Eq.~27),
+where the roles of the two streams are swapped: the policy-evaluation stream is now
+a \emph{sub}-solution and the optimality stream a \emph{super}-solution, the latter
+anchored at $\pihat^\star$ via $\alpha^\star_t\ge\beta^\star_t(h_t,\pihat^\star_t(\sigma_t(h_t)))$
+(Eq.~26). Because the policy-evaluation recursion is exact (Lemma~1 equality), the
+super-solution anchored at $\pihat^\star$ propagates the \emph{same} action lookup as
+the policy-evaluation stream and starts from the same terminal $\Delta_T$; the two
+streams therefore coincide and the in-framework lower bound collapses to the
+trivial
 \begin{equation}
-L(s)=Q^{\pihat^\star}_1\!\bigl(s,\pihat^\star(s)\bigr)-Q^\star_1\!\bigl(s,\pihat^\star(s)\bigr)
-     =V^{\pihat^\star}_1(s)-\Bigl[c_1\bigl(s,\pihat^\star(s)\bigr)+\textstyle\sum_w W_M[w]\,V^\star_2\bigl(\mathrm{clip}(s+\pihat^\star(s)-w)\bigr)\Bigr].
+V^{\pihat^\star}_1(s)-V^\star_1(s)\ \ge\ \alpha^{\pihat^\star}_1(s)-\alpha^\star_1(s)\ =\ 0 .
 \label{eq:L}
 \end{equation}
-This needs the true $V^\star$, so it is \emph{demonstrative} (we solve the true
-model anyway). By construction $0\le L(s)\le V^{\pihat^\star}_1(s)-V^\star_1(s)$.
+A non-trivial lower bound would require either the true optimal policy $\pi^\star$
+or an out-of-framework advantage argument; both lie outside Extended Theorem~3, so
+we report only the upper certificate $U$.
 
 \section{Full Algorithm}
 \begin{algorithm}[H]
-\caption{Signed sample-path bound (Extended Thm 3/4)}
+\caption{Signed sample-path bound (Extended Thm 3)}
 \begin{algorithmic}[1]
 \Require $M,\hat M,\Vhat^\star_{\cdot},\pi^\star_{\cdot},\pihat^\star_{\cdot}$, horizon $T$, base-stock set $\Sigma$
-\Ensure $U_{\max},U_{\mathrm{res}},U_{\sup}$ (upper) and $L$ (lower edge)
+\Ensure upper bounds $U_{\max},U_{\mathrm{res}},U_{\sup}$ (Eq.~21)
 \State $\varepsilon_{\text{base}}(s)\gets h_M(s)-h_{\hat M}(s)$ \Comment{signed, Eq.~\eqref{eq:eps}}
 \State terminal: $\alpha^{\pihat^\star}_T=\alpha^\star_T\gets\gamma^{T-1}\varepsilon_{\text{base}}$
 \For{$t=T-1,\dots,1$}
@@ -210,8 +219,8 @@ model anyway). By construction $0\le L(s)\le V^{\pihat^\star}_1(s)-V^\star_1(s)$
     \State $\alpha^\star_{\bullet,t}(s)\gets\varepsilon_t(s)+\min_{a\in\mathcal C(s)}\mathrm{combo}^{(\star)}[s+a]$ \Comment{Eq.~\eqref{eq:star}}
   \EndFor
 \EndFor
-\State $U_\bullet\gets\alpha^{\pihat^\star}_1-\alpha^\star_{\bullet,1}$;\quad compute $L$ via Eq.~\eqref{eq:L}
-\State \Return $U_{\max},U_{\mathrm{res}},U_{\sup},L$
+\State $U_\bullet\gets\alpha^{\pihat^\star}_1-\alpha^\star_{\bullet,1}$ \Comment{Eq.~\eqref{eq:U}}
+\State \Return $U_{\max},U_{\mathrm{res}},U_{\sup}$
 \end{algorithmic}
 \end{algorithm}
 
@@ -235,8 +244,6 @@ Signed $U_{\sup}$  & 2.80 & \\
 abs $2\alpha_{\max}$ & 41.45 & existing\\
 abs $2\alpha_{\mathrm{res}}$ & 42.46 & existing\\
 abs $2\alpha_{\sup}$ & 688.33 & existing\\
-\midrule
-Lower edge $L$ & 1.51 & $0\le L\le$ gap\\
 \bottomrule
 \end{tabular}
 \end{center}
