@@ -4,7 +4,12 @@ Numerical experiments for weighted-norm and sample-path dependent bounds on subo
 
 ## Overview
 
-We study an inventory MDP under two models: a true model **M** and an approximate model **$\hat{M}$** that differ in demand distribution and holding cost. The project computes and compares three types of bounds on the suboptimality gap $V^{\hat{\pi}^\star\} - V^\star$:
+We study two test MDPs, each under a true model **M** and an approximate model **$\hat{M}$**:
+
+- **Inventory MDP** -- models differ in demand distribution and holding cost; optimal policies are base-stock.
+- **IoT remote transmission scheduling** (Exercise 5.4 of *Stochastic Control* notes at https://adityam.github.io/stochastic-control/mdps/intro.html#exercises, with centered binomial noise) -- models differ in noise drift and transmission cost; optimal policies are threshold bands.
+
+The project computes and compares three types of bounds on the suboptimality gap $V^{\hat{\pi}^\star\} - V^\star$:
 
 1. **Sup-norm bound** -- uniform constant bound over all states
 2. **Weighted-norm bound** -- state-dependent bound using a Lyapunov weight function
@@ -14,7 +19,7 @@ We study an inventory MDP under two models: a true model **M** and an approximat
 
 ```
 .
-├── models.py                  # InventoryMDP class (parameters, demand PMF, holding cost)
+├── models.py                  # InventoryMDP and IoTModel classes (parameters, noise PMFs, per-step costs)
 ├── solvers.py                 # Value iteration (H-array trick), Bellman operators, policy evaluation
 ├── bounds.py                  # Kappa computation, weighted-norm bounds, sample-path fixed-point bound
 ├── plots.py                   # Plotting utilities for zoomed-in/zoomed-out figures
@@ -25,13 +30,15 @@ We study an inventory MDP under two models: a true model **M** and an approximat
 │   ├── pdf/                   # Rendered derivations and papers
 │   └── notes/                 # Task specs and working notes
 ├── notebooks/
-│   ├── Sample_Path_Bounds.ipynb     # Sample-path bound derivation and comparison
-│   ├── Finite_Horizon_Bounds.ipynb  # Finite-horizon and signed sample-path bounds
+│   ├── Sample_Path_Bounds.ipynb     # Sample-path bound derivation and comparison (inventory)
+│   ├── Finite_Horizon_Bounds.ipynb  # Finite-horizon and signed sample-path bounds (inventory)
+│   ├── IoT_Bounds.ipynb             # Full bound suite on the IoT transmission-scheduling model
 │   └── Paper_Figures.ipynb          # Figure reproduction
 └── figures/
     ├── fig1-fig5/             # Figures from the model approximation paper
     ├── comparison/            # Sample-path vs existing bound comparison plots
     ├── finite_horizon/        # Finite-horizon and signed-bound figures
+    ├── iot/                   # IoT model bound comparison figures
     └── misc/                  # Miscellaneous figure exports
 ```
 
@@ -48,3 +55,7 @@ We study an inventory MDP under two models: a true model **M** and an approximat
 - **Propagated future error** through the true model's transitions
 
 The bound $2\alpha(s) >= V^{\hat{\pi}\star}(s) - V^\star(s)$ is compared against the sup-norm and weighted-norm bounds, showing significant tightness improvements in the operating region (sample-path / weighted-norm ratio ~ 0.83, sample-path / sup-norm ratio ~ 0.06).
+
+## IoT Bounds Notebook
+
+`notebooks/IoT_Bounds.ipynb` runs the same bound suite on the remote transmission-scheduling model: sync error $S_{t+1} = \mathrm{clip}(S_t + W_t)$ if idle, $\mathrm{clip}(W_t)$ if transmitting, with cost $\lambda a + (1-a)s^2$ and centered binomial noise $W = D - n/2$, $D \sim \mathrm{Bin}(10, q)$. True model $(q=0.4, \lambda=100)$ vs approximate $(q=0.5, \lambda=95)$: a drift mismatch plus an **action-dependent** cost mismatch $\epsilon(s,a) = 5a$. The restricted action set exploits the threshold-band policy structure (band contains 0 and lies within $\pm\lceil\sqrt{\lambda}\rceil$). The notebook validates truncation, bound validity, orderings, and the bit-exact collapse of the Theorem-3 lower bound ($L \equiv 0$); `docs/tex/experiments_section.tex` is the paper-style writeup: it restates the POMDP bounds (absolute-value and signed), states their MDP corollaries, and covers both experiments (inventory and IoT) with the absolute-value and signed bound computations referencing those corollaries.
